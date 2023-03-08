@@ -17,7 +17,7 @@ import love.chihuyu.util.EmbedUtils.setTimestamp
 import love.chihuyu.util.MemberUtils.averageColor
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-fun main(args: Array<String>) = runBlocking {
+fun main() = runBlocking {
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
