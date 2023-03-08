@@ -7,8 +7,7 @@ Original discord bot written in kotlin.
 
 ## 環境変数
 
-* `CHIHUYUFANKT_TOKEN`  
-ボットアカウントのトークン
+[.env.example](https://github.com/Chihuyu-Network/Chihuyufan-kt/blob/master/.env.sample)を見てね
 
 ## 実行
 
