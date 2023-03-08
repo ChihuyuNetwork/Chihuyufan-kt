@@ -48,7 +48,7 @@ fun main() = runBlocking {
         when (command.rootName) {
             "ping" -> {
                 interaction.deferPublicResponse().respond {
-                    content = kord.gateway.averagePing?.toString()
+                    content = "Bot Server -> Discord: " + kord.gateway.averagePing?.toString()
                 }
             }
             "avatar" -> {
