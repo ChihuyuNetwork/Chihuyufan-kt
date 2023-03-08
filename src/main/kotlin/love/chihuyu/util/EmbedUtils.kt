@@ -9,15 +9,15 @@ object EmbedUtils {
         footer = EmbedBuilder.Footer().apply {
             val time = LocalDateTime.now()
             text = "${time.year}/${
-                "%02d".format(time.monthValue)
+            "%02d".format(time.monthValue)
             }/${
-                "%02d".format(time.dayOfMonth)
+            "%02d".format(time.dayOfMonth)
             } ${
-                "%02d".format(time.hour)
+            "%02d".format(time.hour)
             }:${
-                "%02d".format(time.minute)
+            "%02d".format(time.minute)
             }:${
-                "%02d".format(time.second)
+            "%02d".format(time.second)
             }"
         }
     }
