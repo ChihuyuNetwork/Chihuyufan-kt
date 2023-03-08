@@ -7,7 +7,7 @@ Chihuyufan written in kotlin.
 
 ## 環境変数
 
-[.env.example](https://github.com/Chihuyu-Network/Chihuyufan-kt/blob/master/.env.sample)を見てね
+[.env.sample](https://github.com/Chihuyu-Network/Chihuyufan-kt/blob/master/.env.sample)を見てね
 
 ## 実行
 
