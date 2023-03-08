@@ -18,7 +18,7 @@ import love.chihuyu.util.MemberUtils.averageColor
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
 fun main(args: Array<String>) = runBlocking {
-    val kord = Kord(args[0]) {
+    val kord = Kord(System.getenv("TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
             users { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
