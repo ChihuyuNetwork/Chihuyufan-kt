@@ -5,6 +5,7 @@ Original discord bot written in kotlin.
 
 `gradlew shadowJar`
 
-## 実行方法
+## 実行
 
-`java -jar Chihuyufan-kt-all.jar <TOKEN>`
+環境: Java 18  
+コマンド: `java -jar Chihuyufan-kt-all.jar <TOKEN>`
