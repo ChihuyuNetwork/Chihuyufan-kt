@@ -5,7 +5,12 @@ Original discord bot written in kotlin.
 
 `gradlew shadowJar`
 
+## 環境変数
+
+* `CHIHUYUFANKT_TOKEN`  
+ボットアカウントのトークン
+
 ## 実行
 
 環境: Java 18  
-コマンド: `java -jar Chihuyufan-kt-all.jar <TOKEN>`
+コマンド: `java -jar Chihuyufan-kt-all.jar`
