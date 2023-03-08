@@ -1,5 +1,5 @@
 # Chihuyufan-kt
-Original discord bot written in kotlin.
+Chihuyufan written in kotlin.
 
 ## ビルド
 
