@@ -48,7 +48,7 @@ fun main() = runBlocking {
         when (command.rootName) {
             "ping" -> {
                 interaction.deferPublicResponse().respond {
-                    content = "Average: " + kord.gateway.averagePing?.toString()
+                    content = "Avg. " + kord.gateway.averagePing?.toString()
                 }
             }
             "avatar" -> {
