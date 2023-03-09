@@ -15,6 +15,8 @@ import dev.kord.rest.builder.interaction.string
 import dev.kord.rest.builder.interaction.subCommand
 import dev.kord.rest.builder.interaction.user
 import dev.kord.rest.builder.message.modify.embed
+import io.ktor.client.request.forms.*
+import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import love.chihuyu.util.EmbedUtils.setTimestamp
@@ -23,7 +25,8 @@ import love.chihuyu.util.MemberUtils.checkInfraPermission
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
 fun main() = runBlocking {
-    val pterodactylApi = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_TOKEN"))
+    val pteroApp = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_TOKEN"))
+    val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_TOKEN"))
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
@@ -48,6 +51,14 @@ fun main() = runBlocking {
         }
         input("pterodactyl", "Manage chihuyu network's pterodactyl") {
             subCommand("servers", "List all servers")
+            subCommand("nodeinfo", "Display informations of specify node machine") {
+                string("name", "Node name to display informations") {
+                    required = true
+                    pteroApp.retrieveNodes().execute().forEach {
+                        choice(it.name, it.description ?: "A node machine")
+                    }
+                }
+            }
             subCommand("up", "Start the specify server") {
                 string("name", "Server name to start") {
                     required = true
@@ -111,19 +122,54 @@ fun main() = runBlocking {
             "pterodactyl" -> {
                 when (command.data.options.value?.get(0)?.name) {
                     "servers" -> {
+                        val servers = pteroClient.retrieveServers().execute().joinToString("\n") {
+                            "${
+                                when (it.retrieveUtilization().execute().state) {
+                                    UtilizationState.STARTING -> "⬆️"
+                                    UtilizationState.STOPPING -> "⬇️"
+                                    UtilizationState.RUNNING -> "\uD83D\uDFE9"
+                                    UtilizationState.OFFLINE -> "\uD83D\uDFE5"
+                                    else -> "\uD83D\uDFE5"
+                                }
+                            } " + "`${it.description}`: `${it.name}`"
+                        }
                         interaction.deferPublicResponse().respond {
-                            val servers = pterodactylApi.retrieveServers().joinToString("\n") {
-                                "${
-                                    when (it.retrieveUtilization().execute().state) {
-                                        UtilizationState.STARTING -> "⬆️"
-                                        UtilizationState.STOPPING -> "⬇️"
-                                        UtilizationState.RUNNING -> "\uD83D\uDFE9"
-                                        UtilizationState.OFFLINE -> "\uD83D\uDFE5"
-                                        else -> "\uD83D\uDFE5"
-                                    }
-                                } " + "`${it.description}`: `${it.name}`"
-                            }
                             content = servers
+                        }
+                    }
+                    "nodeinfo" -> {
+                        val name = command.strings["name"]
+                        val nodes = pteroApp.retrieveNodesByName(name, false).execute()
+                        if (nodes.isEmpty()) interaction.deferPublicResponse().respond {
+                            content = "`$name` was not found."
+                            return@on
+                        }
+
+                        var cpu = 0.0
+                        var memory = 0L
+                        var disk = 0.0
+                        var netIg = 0L
+                        var netEg = 0L
+
+                        pteroClient.retrieveServers().execute().forEach {
+                            val utilization = it.retrieveUtilization().execute()
+                            cpu += utilization.cpu
+                            memory += utilization.memory
+                            disk += utilization.disk
+                            netIg += utilization.networkIngress
+                            netEg += utilization.networkEgress
+                        }
+
+                        interaction.deferPublicResponse().respond {
+                            embed {
+                                title = "Information of `${nodes[0].name}`"
+                                field("CPU Usage", true) { "${cpu}%/CPU" }
+                                field("Memory Usage", true) { "${memory}/${nodes[0].allocatedMemory}" }
+                                field("Disk Usage", true) { "${disk}/${nodes[0].allocatedDisk}" }
+                                field("Network Igress", true) { "${netIg}MB" }
+                                field("Network Egress", true) { "${netEg}MB" }
+                                setTimestamp()
+                            }
                         }
                     }
                     "up" -> {
@@ -132,7 +178,7 @@ fun main() = runBlocking {
                             return@on
                         }
                         val name = command.strings["name"]
-                        val servers = pterodactylApi.retrieveServersByName(name, false).execute()
+                        val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
                             return@on
@@ -149,7 +195,7 @@ fun main() = runBlocking {
                             return@on
                         }
                         val name = command.strings["name"]
-                        val servers = pterodactylApi.retrieveServersByName(name, false).execute()
+                        val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
                             return@on
@@ -166,7 +212,7 @@ fun main() = runBlocking {
                             return@on
                         }
                         val name = command.strings["name"]
-                        val servers = pterodactylApi.retrieveServersByName(name, false).execute()
+                        val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
                             return@on
@@ -183,9 +229,9 @@ fun main() = runBlocking {
                             return@on
                         }
                         val name = command.strings["name"]
-                        val servers = pterodactylApi.retrieveServersByName(name, false).execute()
+                        val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
-                            content = "`${servers[0].name}` was not found."
+                            content = "`$name` was not found."
                             return@on
                         }
 
