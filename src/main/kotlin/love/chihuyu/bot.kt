@@ -1,9 +1,11 @@
 package love.chihuyu
 
+import com.mattmalec.pterodactyl4j.DataType
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
+import dev.kord.common.Color
 import dev.kord.core.Kord
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
@@ -19,14 +21,15 @@ import io.ktor.client.request.forms.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
-import love.chihuyu.util.EmbedUtils.setTimestamp
+import kotlinx.datetime.Clock
 import love.chihuyu.util.MemberUtils.averageColor
 import love.chihuyu.util.MemberUtils.checkInfraPermission
+import java.time.Duration
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
 fun main() = runBlocking {
-    val pteroApp = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_TOKEN"))
-    val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_TOKEN"))
+    val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
+    val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
@@ -51,12 +54,9 @@ fun main() = runBlocking {
         }
         input("pterodactyl", "Manage chihuyu network's pterodactyl") {
             subCommand("servers", "List all servers")
-            subCommand("nodeinfo", "Display informations of specify node machine") {
-                string("name", "Node name to display informations") {
+            subCommand("serverinfo", "Display informations of specify server") {
+                string("name", "Server name to display informations") {
                     required = true
-                    pteroApp.retrieveNodes().execute().forEach {
-                        choice(it.name, it.description ?: "A node machine")
-                    }
                 }
             }
             subCommand("up", "Start the specify server") {
@@ -102,7 +102,7 @@ fun main() = runBlocking {
                             size = Image.Size.Size4096
                             format = if (avatar.animated) Image.Format.GIF else Image.Format.PNG
                         }
-                        setTimestamp()
+                        timestamp = Clock.System.now()
                     }
                 }
             }
@@ -115,7 +115,7 @@ fun main() = runBlocking {
                         field {
                             value = member.roles.toList().sortedByDescending { it.rawPosition }.joinToString(" ") { it.mention }
                         }
-                        setTimestamp()
+                        timestamp = Clock.System.now()
                     }
                 }
             }
@@ -137,38 +137,37 @@ fun main() = runBlocking {
                             content = servers
                         }
                     }
-                    "nodeinfo" -> {
+                    "serverinfo" -> {
                         val name = command.strings["name"]
-                        val nodes = pteroApp.retrieveNodesByName(name, false).execute()
-                        if (nodes.isEmpty()) interaction.deferPublicResponse().respond {
+                        val servers = pteroClient.retrieveServersByName(name, false).execute()
+                        if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
                             return@on
                         }
 
-                        var cpu = 0.0
-                        var memory = 0L
-                        var disk = 0.0
-                        var netIg = 0L
-                        var netEg = 0L
-
-                        pteroClient.retrieveServers().execute().forEach {
-                            val utilization = it.retrieveUtilization().execute()
-                            cpu += utilization.cpu
-                            memory += utilization.memory
-                            disk += utilization.disk
-                            netIg += utilization.networkIngress
-                            netEg += utilization.networkEgress
-                        }
+                        val utilization = servers[0].retrieveUtilization().execute()
 
                         interaction.deferPublicResponse().respond {
                             embed {
-                                title = "Information of `${nodes[0].name}`"
-                                field("CPU Usage", true) { "${cpu}%/CPU" }
-                                field("Memory Usage", true) { "${memory}/${nodes[0].allocatedMemory}" }
-                                field("Disk Usage", true) { "${disk}/${nodes[0].allocatedDisk}" }
-                                field("Network Igress", true) { "${netIg}MB" }
-                                field("Network Egress", true) { "${netEg}MB" }
-                                setTimestamp()
+                                title = "Information of `${servers[0].name}`"
+                                color = when (utilization.state) {
+                                    UtilizationState.STARTING -> Color(255, 255, 100)
+                                    UtilizationState.STOPPING -> Color(255, 255, 100)
+                                    UtilizationState.RUNNING -> Color(100, 255, 100)
+                                    UtilizationState.OFFLINE -> Color(255, 100, 100)
+                                    else -> Color(255, 100, 100)
+                                }
+                                description = servers[0].description
+                                timestamp = Clock.System.now()
+                                field("Node", true) { servers[0].node }
+                                field("Status", true) { utilization.state.name }
+                                field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
+                                field("CPU Usage", true) { "${utilization.cpu}%" }
+                                field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.MB) }
+                                field("Disk Usage", true) { utilization.getDiskFormatted(DataType.MB) }
+                                field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
+                                field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
+                                field("Uptime", true) { utilization.uptimeFormatted }
                             }
                         }
                     }
