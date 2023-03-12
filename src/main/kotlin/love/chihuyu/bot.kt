@@ -24,7 +24,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import love.chihuyu.util.MemberUtils.averageColor
 import love.chihuyu.util.MemberUtils.checkInfraPermission
-import java.time.Duration
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
 fun main() = runBlocking {
@@ -89,6 +88,7 @@ fun main() = runBlocking {
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
+                    toRequest()
                 }
             }
             "avatar" -> {
@@ -104,6 +104,7 @@ fun main() = runBlocking {
                         }
                         timestamp = Clock.System.now()
                     }
+                    toRequest()
                 }
             }
             "roles" -> {
@@ -117,24 +118,25 @@ fun main() = runBlocking {
                         }
                         timestamp = Clock.System.now()
                     }
+                    toRequest()
                 }
             }
             "pterodactyl" -> {
                 when (command.data.options.value?.get(0)?.name) {
                     "servers" -> {
-                        val servers = pteroClient.retrieveServers().execute().joinToString("\n") {
-                            "${
-                                when (it.retrieveUtilization().execute().state) {
-                                    UtilizationState.STARTING -> "⬆️"
-                                    UtilizationState.STOPPING -> "⬇️"
-                                    UtilizationState.RUNNING -> "\uD83D\uDFE9"
-                                    UtilizationState.OFFLINE -> "\uD83D\uDFE5"
-                                    else -> "\uD83D\uDFE5"
-                                }
-                            } " + "`${it.description}`: `${it.name}`"
-                        }
                         interaction.deferPublicResponse().respond {
-                            content = servers
+                            content = pteroClient.retrieveServers().joinToString("\n") {
+                                "${
+                                    when (it.retrieveUtilization().execute().state) {
+                                        UtilizationState.STARTING -> "⬆️"
+                                        UtilizationState.STOPPING -> "⬇️"
+                                        UtilizationState.RUNNING -> "\uD83D\uDFE9"
+                                        UtilizationState.OFFLINE -> "\uD83D\uDFE5"
+                                        else -> "\uD83D\uDFE5"
+                                    }
+                                } " + "`${it.description}`: `${it.name}`"
+                            }
+                            toRequest()
                         }
                     }
                     "serverinfo" -> {
@@ -163,29 +165,33 @@ fun main() = runBlocking {
                                 field("Status", true) { utilization.state.name }
                                 field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
                                 field("CPU Usage", true) { "${utilization.cpu}%" }
-                                field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.MB) }
-                                field("Disk Usage", true) { utilization.getDiskFormatted(DataType.MB) }
+                                field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
+                                field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
                                 field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
                                 field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
                                 field("Uptime", true) { utilization.uptimeFormatted }
                             }
+                            toRequest()
                         }
                     }
                     "up" -> {
                         if (interaction.user.checkInfraPermission()) interaction.deferPublicResponse().respond {
                             content = "You don't have permissions."
+                            toRequest()
                             return@on
                         }
                         val name = command.strings["name"]
                         val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
+                            toRequest()
                             return@on
                         }
 
                         servers[0].start().execute()
                         interaction.deferPublicResponse().respond {
                             content = "\uD83D\uDFE9 `${servers[0].name}` has started."
+                            toRequest()
                         }
                     }
                     "down" -> {
@@ -197,46 +203,54 @@ fun main() = runBlocking {
                         val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
+                            toRequest()
                             return@on
                         }
 
                         servers[0].stop().execute()
                         interaction.deferPublicResponse().respond {
                             content = "\uD83D\uDFE5 `${servers[0].name}` has stopped."
+                            toRequest()
                         }
                     }
                     "restart" -> {
                         if (interaction.user.checkInfraPermission()) interaction.deferPublicResponse().respond {
                             content = "You don't have permissions."
+                            toRequest()
                             return@on
                         }
                         val name = command.strings["name"]
                         val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
+                            toRequest()
                             return@on
                         }
 
                         servers[0].restart().execute()
                         interaction.deferPublicResponse().respond {
                             content = "⬆️ `${servers[0].name}` has restarted."
+                            toRequest()
                         }
                     }
                     "kill" -> {
                         if (interaction.user.checkInfraPermission()) interaction.deferPublicResponse().respond {
                             content = "You don't have permissions."
+                            toRequest()
                             return@on
                         }
                         val name = command.strings["name"]
                         val servers = pteroClient.retrieveServersByName(name, false).execute()
                         if (servers.isEmpty()) interaction.deferPublicResponse().respond {
                             content = "`$name` was not found."
+                            toRequest()
                             return@on
                         }
 
                         servers[0].kill().execute()
                         interaction.deferPublicResponse().respond {
                             content = "\uD83D\uDC80 `$name` has killed."
+                            toRequest()
                         }
                     }
                 }

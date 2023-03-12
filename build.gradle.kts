@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     kotlin("jvm") version "1.8.0"
     id("com.github.johnrengelman.shadow") version "5.2.0"
@@ -18,6 +20,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.13.3")
     implementation("dev.kord:kord-core:0.8.0-M17")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
+    implementation(kotlin("stdlib-jdk8"))
 }
 
 ktlint {
@@ -37,4 +40,12 @@ tasks {
 
 kotlin {
     jvmToolchain(18)
+}
+val compileKotlin: KotlinCompile by tasks
+compileKotlin.kotlinOptions {
+    jvmTarget = "1.8"
+}
+val compileTestKotlin: KotlinCompile by tasks
+compileTestKotlin.kotlinOptions {
+    jvmTarget = "1.8"
 }
