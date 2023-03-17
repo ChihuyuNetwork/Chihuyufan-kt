@@ -16,7 +16,7 @@ repositories {
 
 dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.13.3")
-    implementation("org.apache.logging.log4j:log4j-core:2.17.1")
+    implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.13.3")
     implementation("dev.kord:kord-core:0.8.0-M17")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
