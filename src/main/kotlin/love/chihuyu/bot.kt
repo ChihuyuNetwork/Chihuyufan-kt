@@ -1,5 +1,13 @@
 package love.chihuyu
 
+import com.aallam.openai.api.BetaOpenAI
+import com.aallam.openai.api.chat.ChatCompletionRequest
+import com.aallam.openai.api.chat.ChatMessage
+import com.aallam.openai.api.chat.ChatRole
+import com.aallam.openai.api.image.ImageCreation
+import com.aallam.openai.api.image.ImageSize
+import com.aallam.openai.api.model.ModelId
+import com.aallam.openai.client.OpenAI
 import com.mattmalec.pterodactyl4j.DataType
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
@@ -13,9 +21,7 @@ import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
-import dev.kord.rest.builder.interaction.string
-import dev.kord.rest.builder.interaction.subCommand
-import dev.kord.rest.builder.interaction.user
+import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.modify.embed
 import io.ktor.client.request.forms.*
 import io.ktor.utils.io.*
@@ -26,10 +32,15 @@ import love.chihuyu.util.MemberUtils.averageColor
 import love.chihuyu.util.MemberUtils.checkInfraPermission
 import java.time.format.DateTimeFormatter
 
+@OptIn(BetaOpenAI::class)
+val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
+
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
+@OptIn(BetaOpenAI::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
+    val openai = OpenAI(System.getenv("OPENAI_TOKEN"))
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
@@ -81,6 +92,39 @@ fun main() = runBlocking {
             }
             subCommand("kill", "Kill the specify server") {
                 string("name", "Server name to shutdown") {
+                    required = true
+                }
+            }
+        }
+        input("chatgpt", "Use CahtGPT API") {
+            subCommand("new", "Start new session with ChatGPT") {
+                string("text", "Text message to send to chatgpt") {
+                    required = true
+                }
+                number("temperature", "Temperature of ChatGPT message(0~2)") {
+                    minValue = .0
+                    maxValue = 2.0
+                }
+                int("max_tokens", "Max message length (100~4000)") {
+                    minValue = 100
+                    maxValue = 4000
+                }
+            }
+            subCommand("reply", "Continue communication in current session") {
+                string("text", "Text message to send to chatgpt") {
+                    required = true
+                }
+                number("temperature", "Temperature of ChatGPT message(0~2)") {
+                    minValue = .0
+                    maxValue = 2.0
+                }
+                int("max_tokens", "Max message length (100~4000)") {
+                    minValue = 100
+                    maxValue = 4000
+                }
+            }
+            subCommand("image", "Create image by given words") {
+                string("words", "Words to generate image") {
                     required = true
                 }
             }
@@ -290,6 +334,65 @@ fun main() = runBlocking {
                             servers[0].kill().execute()
                             content = "\uD83D\uDC80 `$name` has killed."
                             toRequest()
+                        }
+                    }
+                }
+            }
+            "chatgpt" -> {
+                when (command.data.options.value?.get(0)?.name) {
+                    "new" -> {
+                        interaction.deferPublicResponse().respond {
+                            chatCache[interaction.user.id.value] = mutableListOf()
+                            chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"] ?: return@on)
+                            try {
+                                val completion = openai.chatCompletion(
+                                    ChatCompletionRequest(
+                                        ModelId("gpt-3.5-turbo"),
+                                        chatCache[interaction.user.id.value]!!,
+                                        temperature = command.numbers["temperature"],
+                                        maxTokens = command.integers["max_tokens"]?.toInt()
+                                    )
+                                ).choices.last().message
+                                content = completion?.content ?: "null"
+                                chatCache[interaction.user.id.value]!! += completion ?: return@on
+                            } catch (e: Throwable) {
+                                content = e.stackTraceToString()
+                            }
+                        }
+                    }
+                    "reply" -> {
+                        interaction.deferPublicResponse().respond {
+                            chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
+                            chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"] ?: return@on)
+                            try {
+                                val completion = openai.chatCompletion(
+                                    ChatCompletionRequest(
+                                        ModelId("gpt-3.5-turbo"),
+                                        chatCache[interaction.user.id.value]!!,
+                                        temperature = command.numbers["temperature"],
+                                        maxTokens = command.integers["max_tokens"]?.toInt()
+                                    )
+                                ).choices.last().message
+                                content = completion?.content ?: "null"
+                                chatCache[interaction.user.id.value]!! += completion ?: return@on
+                            } catch (e: Throwable) {
+                                content = e.stackTraceToString()
+                            }
+                        }
+                    }
+                    "image" -> {
+                        interaction.deferPublicResponse().respond {
+                            try {
+                                val completion = openai.imageURL(
+                                    ImageCreation(
+                                        command.strings["words"] ?: return@on,
+                                        size = ImageSize.is1024x1024
+                                    )
+                                ).last().url
+                                content = completion
+                            } catch (e: Throwable) {
+                                content = e.stackTraceToString()
+                            }
                         }
                     }
                 }
