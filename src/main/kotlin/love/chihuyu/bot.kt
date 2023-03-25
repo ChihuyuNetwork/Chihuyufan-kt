@@ -95,6 +95,14 @@ fun main() = runBlocking {
                     required = true
                 }
             }
+            subCommand("send", "Send command to server") {
+                string("name", "Server name to send command") {
+                    required = true
+                }
+                string("command", "Don't need slash") {
+                    required = true
+                }
+            }
         }
         input("chatgpt", "Use CahtGPT API") {
             subCommand("new", "Start new session with ChatGPT") {
@@ -193,28 +201,26 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             val name = command.strings["name"]
                             val nodes = pteroApplication.retrieveNodesByName(name, false).execute()
-                            if (nodes.isEmpty()) {
+                            if (nodes.size == 0) {
                                 content = "`$name` was not found."
-                                toRequest()
-                                return@on
-                            }
+                            } else {
+                                val servers = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
 
-                            val servers = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
-
-                            embed {
-                                title = "Information of `${nodes[0].name}`"
-                                color = Color(100, 255, 100)
-                                description = nodes[0].description
-                                timestamp = Clock.System.now()
-                                field("Address", true) { nodes[0].fqdn }
-                                field("Allocations", true) { nodes[0].retrieveAllocations().execute().size.toString() }
-                                field("Directory", true) { nodes[0].retrieveConfiguration().execute().system.dataPath }
-                                field("CPU Usage", true) { "${"%.2f".format(servers.sumOf { it.cpu })}%" }
-                                field("Memory Usage", true) { "${"%.2f".format(servers.sumOf { it.memory } / 1024.0 / 1024.0 / 1024.0)}/${nodes[0].allocatedMemory.toInt() / 2048.0}GB" }
-                                field("Disk Usage", true) { "${"%.2f".format(servers.sumOf { it.disk } / 1024.0 / 1024.0 / 1024.0)}GB" }
-                                field("Network Ingress", true) { "${"%.2f".format(servers.sumOf { it.networkIngress } / 1024.0 / 1024.0)}MB" }
-                                field("Network Egress", true) { "${"%.2f".format(servers.sumOf { it.networkEgress } / 1024.0 / 1024.0)}MB" }
-                                field("Creation", true) { nodes[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
+                                embed {
+                                    title = "Information of `${nodes[0].name}`"
+                                    color = Color(100, 255, 100)
+                                    description = nodes[0].description
+                                    timestamp = Clock.System.now()
+                                    field("Address", true) { nodes[0].fqdn }
+                                    field("Allocations", true) { nodes[0].retrieveAllocations().execute().size.toString() }
+                                    field("Directory", true) { nodes[0].retrieveConfiguration().execute().system.dataPath }
+                                    field("CPU Usage", true) { "${"%.2f".format(servers.sumOf { it.cpu })}%" }
+                                    field("Memory Usage", true) { "${"%.2f".format(servers.sumOf { it.memory } / 1024.0 / 1024.0 / 1024.0)}/${nodes[0].allocatedMemory.toInt() / 2048.0}GB" }
+                                    field("Disk Usage", true) { "${"%.2f".format(servers.sumOf { it.disk } / 1024.0 / 1024.0 / 1024.0)}GB" }
+                                    field("Network Ingress", true) { "${"%.2f".format(servers.sumOf { it.networkIngress } / 1024.0 / 1024.0)}MB" }
+                                    field("Network Egress", true) { "${"%.2f".format(servers.sumOf { it.networkEgress } / 1024.0 / 1024.0)}MB" }
+                                    field("Creation", true) { nodes[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
+                                }
                             }
                             toRequest()
                         }
@@ -223,116 +229,118 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) {
+                            if (servers.size == 0) {
                                 content = "`$name` was not found."
-                                toRequest()
-                                return@on
-                            }
+                            } else {
+                                val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
+                                val utilization = servers[0].retrieveUtilization().execute()
 
-                            val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
-                            val utilization = servers[0].retrieveUtilization().execute()
-
-                            embed {
-                                title = "Information of `${servers[0].name}`"
-                                color = when (utilization.state) {
-                                    UtilizationState.STARTING -> Color(255, 255, 100)
-                                    UtilizationState.STOPPING -> Color(255, 255, 100)
-                                    UtilizationState.RUNNING -> Color(100, 255, 100)
-                                    UtilizationState.OFFLINE -> Color(255, 100, 100)
-                                    else -> Color(255, 100, 100)
+                                embed {
+                                    title = "Information of `${servers[0].name}`"
+                                    color = when (utilization.state) {
+                                        UtilizationState.STARTING -> Color(255, 255, 100)
+                                        UtilizationState.STOPPING -> Color(255, 255, 100)
+                                        UtilizationState.RUNNING -> Color(100, 255, 100)
+                                        UtilizationState.OFFLINE -> Color(255, 100, 100)
+                                        else -> Color(255, 100, 100)
+                                    }
+                                    description = servers[0].description
+                                    timestamp = Clock.System.now()
+                                    field("Node", true) { servers[0].node }
+                                    field("Status", true) { utilization.state.name }
+                                    field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
+                                    field("CPU Usage", true) { "${utilization.cpu}%" }
+                                    field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
+                                    field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
+                                    field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
+                                    field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
+                                    field("Uptime", true) { utilization.uptimeFormatted }
+                                    field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
                                 }
-                                description = servers[0].description
-                                timestamp = Clock.System.now()
-                                field("Node", true) { servers[0].node }
-                                field("Status", true) { utilization.state.name }
-                                field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
-                                field("CPU Usage", true) { "${utilization.cpu}%" }
-                                field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
-                                field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
-                                field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
-                                field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
-                                field("Uptime", true) { utilization.uptimeFormatted }
-                                field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
                             }
                             toRequest()
                         }
                     }
                     "up" -> {
                         interaction.deferPublicResponse().respond {
-                            if (interaction.user.checkInfraPermission()) {
-                                content = "You don't have permissions."
-                                toRequest()
-                                return@on
-                            }
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) {
-                                content = "`$name` was not found."
-                                toRequest()
-                                return@on
+                            content = if (interaction.user.checkInfraPermission()) {
+                                "You don't have permissions."
+                            } else if (servers.size == 0) {
+                                "`$name` was not found."
+                            } else {
+                                servers[0].start().execute()
+                                "\uD83D\uDFE9 `${servers[0].name}` has started."
                             }
-
-                            servers[0].start().execute()
-                            content = "\uD83D\uDFE9 `${servers[0].name}` has started."
                             toRequest()
                         }
                     }
                     "down" -> {
                         interaction.deferPublicResponse().respond {
-                            if (interaction.user.checkInfraPermission()) {
-                                content = "You don't have permissions."
-                                return@on
-                            }
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) {
-                                content = "`$name` was not found."
-                                toRequest()
-                                return@on
+                            content = if (interaction.user.checkInfraPermission()) {
+                                "You don't have permissions."
+                            } else if (servers.size == 0) {
+                                "`$name` was not found."
+                            } else {
+                                servers[0].stop().execute()
+                                "\uD83D\uDFE5 `${servers[0].name}` has stopped."
                             }
-
-                            servers[0].stop().execute()
-                            content = "\uD83D\uDFE5 `${servers[0].name}` has stopped."
                             toRequest()
                         }
                     }
                     "restart" -> {
                         interaction.deferPublicResponse().respond {
-                            if (interaction.user.checkInfraPermission()) {
-                                content = "You don't have permissions."
-                                toRequest()
-                                return@on
-                            }
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) {
-                                content = "`$name` was not found."
-                                toRequest()
-                                return@on
+                            content = if (interaction.user.checkInfraPermission()) {
+                                "You don't have permissions."
+                            } else if (servers.size == 0) {
+                                "`$name` was not found."
+                            } else {
+                                servers[0].restart().execute()
+                                "⬆️ `${servers[0].name}` has restarted."
                             }
-
-                            servers[0].restart().execute()
-                            content = "⬆️ `${servers[0].name}` has restarted."
                             toRequest()
                         }
                     }
                     "kill" -> {
                         interaction.deferPublicResponse().respond {
-                            if (interaction.user.checkInfraPermission()) {
-                                content = "You don't have permissions."
-                                toRequest()
-                                return@on
-                            }
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) {
-                                content = "`$name` was not found."
-                                toRequest()
-                                return@on
+                            content = if (interaction.user.checkInfraPermission()) {
+                                "You don't have permissions."
+                            } else if (servers.size == 0) {
+                                "`$name` was not found."
+                            } else {
+                                servers[0].kill().execute()
+                                "\uD83D\uDC80 `$name` has killed."
                             }
-
-                            servers[0].kill().execute()
-                            content = "\uD83D\uDC80 `$name` has killed."
+                            toRequest()
+                        }
+                    }
+                    "send" -> {
+                        interaction.deferPublicResponse().respond {
+                            val name = command.strings["name"]
+                            val command = command.strings["command"]
+                            val servers = pteroClient.retrieveServersByName(name, false).execute()
+                            content = if (interaction.user.checkInfraPermission()) {
+                                "You don't have permissions."
+                            } else if (servers.size == 0) {
+                                "`$name` was not found."
+                            } else {
+                                try {
+                                    servers[0].sendCommand(command).execute()
+                                    "\uD83D\uDCAB `$command` sent to `$name`"
+                                } catch (e: Throwable) {
+                                    "Error encountered!\n```${
+                                        e.message + "\n" + 
+                                        e.stackTrace.joinToString("\n")
+                                    }```"
+                                }
+                            }
                             toRequest()
                         }
                     }
