@@ -193,7 +193,7 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             val name = command.strings["name"]
                             val nodes = pteroApplication.retrieveNodesByName(name, false).execute()
-                            if (nodes.isEmpty()) interaction.deferPublicResponse().respond {
+                            if (nodes.isEmpty()) {
                                 content = "`$name` was not found."
                                 toRequest()
                                 return@on
@@ -223,7 +223,7 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             val name = command.strings["name"]
                             val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            if (servers.isEmpty()) interaction.deferPublicResponse().respond {
+                            if (servers.isEmpty()) {
                                 content = "`$name` was not found."
                                 toRequest()
                                 return@on
