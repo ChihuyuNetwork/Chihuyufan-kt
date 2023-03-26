@@ -226,13 +226,13 @@ fun main() = runBlocking {
                                 )
 
                                 actionRow {
-                                    interactionButton(ButtonStyle.Success, "refreshstatus-${servers[0].name}") {
+                                    interactionButton(ButtonStyle.Primary, "refreshstatus-${servers[0].name}") {
                                         label = "Refresh"
                                     }
                                     interactionButton(ButtonStyle.Success, "upserver-${servers[0].name}") {
                                         label = "Start"
                                     }
-                                    interactionButton(ButtonStyle.Primary, "restartserver-${servers[0].name}") {
+                                    interactionButton(ButtonStyle.Success, "restartserver-${servers[0].name}") {
                                         label = "Restart"
                                     }
                                     interactionButton(ButtonStyle.Danger, "downserver-${servers[0].name}") {
@@ -240,6 +240,14 @@ fun main() = runBlocking {
                                     }
                                     interactionButton(ButtonStyle.Danger, "killserver-${servers[0].name}") {
                                         label = "Kill"
+                                    }
+                                }
+                                actionRow {
+                                    linkButton("https://panel.chihuyu.love/server/${servers[0].identifier}") {
+                                        label = "Console"
+                                    }
+                                    linkButton("https://panel.chihuyu.love/admin/servers/view/${servers[0].internalId}") {
+                                        label = "Manage"
                                     }
                                 }
                             }
@@ -313,6 +321,11 @@ fun main() = runBlocking {
             "killserver" -> {
                 interaction.deferPublicResponse().respond {
                     content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.KILL)
+                }
+            }
+            "sendcommand" -> {
+                interaction.deferPublicResponse().respond {
+                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.SEND)
                 }
             }
         }
