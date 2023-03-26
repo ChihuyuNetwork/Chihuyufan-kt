@@ -1,12 +1,7 @@
 package love.chihuyu
 
 import com.aallam.openai.api.BetaOpenAI
-import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
-import com.aallam.openai.api.chat.ChatRole
-import com.aallam.openai.api.image.ImageCreation
-import com.aallam.openai.api.image.ImageSize
-import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.mattmalec.pterodactyl4j.DataType
 import com.mattmalec.pterodactyl4j.PteroBuilder
@@ -14,20 +9,26 @@ import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
+import dev.kord.common.entity.ButtonStyle
+import dev.kord.common.entity.DiscordPartialEmoji
 import dev.kord.core.Kord
+import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
+import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
 import io.ktor.client.request.forms.*
 import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import love.chihuyu.chatgpt.CommunicationBridge
 import love.chihuyu.util.MemberUtils.averageColor
 import love.chihuyu.util.MemberUtils.checkInfraPermission
 import java.time.format.DateTimeFormatter
@@ -257,6 +258,13 @@ fun main() = runBlocking {
                                     field("Uptime", true) { utilization.uptimeFormatted }
                                     field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
                                 }
+
+                                actionRow {
+                                    interactionButton(ButtonStyle.Primary, "upserver-${servers[0].name}") {
+                                        label = "Start"
+                                        emoji = DiscordPartialEmoji(name = "⬆️")
+                                    }
+                                }
                             }
                             toRequest()
                         }
@@ -271,7 +279,7 @@ fun main() = runBlocking {
                                 "`$name` was not found."
                             } else {
                                 servers[0].start().execute()
-                                "\uD83D\uDFE9 `${servers[0].name}` has started."
+                                "⬆️ `${servers[0].name}` has started."
                             }
                             toRequest()
                         }
@@ -286,7 +294,7 @@ fun main() = runBlocking {
                                 "`$name` was not found."
                             } else {
                                 servers[0].stop().execute()
-                                "\uD83D\uDFE5 `${servers[0].name}` has stopped."
+                                "⬇️ `${servers[0].name}` has stopped."
                             }
                             toRequest()
                         }
@@ -351,59 +359,76 @@ fun main() = runBlocking {
                     "new" -> {
                         interaction.deferPublicResponse().respond {
                             chatCache[interaction.user.id.value] = mutableListOf()
-                            chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"] ?: return@on)
-                            try {
-                                val completion = openai.chatCompletion(
-                                    ChatCompletionRequest(
-                                        ModelId("gpt-3.5-turbo"),
-                                        chatCache[interaction.user.id.value]!!,
-                                        temperature = command.numbers["temperature"],
-                                        maxTokens = command.integers["max_tokens"]?.toInt()
-                                    )
-                                ).choices.last().message
-                                content = completion?.content ?: "null"
-                                chatCache[interaction.user.id.value]!! += completion ?: return@on
-                            } catch (e: Throwable) {
-                                content = e.stackTraceToString()
-                            }
+                            content = CommunicationBridge.chat(openai, interaction, command)
                         }
                     }
                     "reply" -> {
                         interaction.deferPublicResponse().respond {
                             chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
-                            chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"] ?: return@on)
-                            try {
-                                val completion = openai.chatCompletion(
-                                    ChatCompletionRequest(
-                                        ModelId("gpt-3.5-turbo"),
-                                        chatCache[interaction.user.id.value]!!,
-                                        temperature = command.numbers["temperature"],
-                                        maxTokens = command.integers["max_tokens"]?.toInt()
-                                    )
-                                ).choices.last().message
-                                content = completion?.content ?: "null"
-                                chatCache[interaction.user.id.value]!! += completion ?: return@on
-                            } catch (e: Throwable) {
-                                content = e.stackTraceToString()
-                            }
+                            content = CommunicationBridge.chat(openai, interaction,command)
                         }
                     }
                     "image" -> {
                         interaction.deferPublicResponse().respond {
-                            try {
-                                val completion = openai.imageURL(
-                                    ImageCreation(
-                                        command.strings["words"] ?: return@on,
-                                        size = ImageSize.is1024x1024
-                                    )
-                                ).last().url
-                                content = completion
-                            } catch (e: Throwable) {
-                                content = e.stackTraceToString()
-                            }
+                            content = CommunicationBridge.image(openai, interaction, command)
                         }
                     }
                 }
+            }
+        }
+    }
+
+    kord.on<GuildButtonInteractionCreateEvent> {
+        val id = interaction.componentId.split("-")
+
+        when (id[0]) {
+            "refreshstatus" -> {
+                interaction.message.edit {
+                    val servers = pteroClient.retrieveServersByName(id[1], false).execute()
+                    val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
+                    val utilization = servers[0].retrieveUtilization().execute()
+                    embed {
+                        title = "Information of `${servers[0].name}`"
+                        color = when (utilization.state) {
+                            UtilizationState.STARTING -> Color(255, 255, 100)
+                            UtilizationState.STOPPING -> Color(255, 255, 100)
+                            UtilizationState.RUNNING -> Color(100, 255, 100)
+                            UtilizationState.OFFLINE -> Color(255, 100, 100)
+                            else -> Color(255, 100, 100)
+                        }
+                        description = servers[0].description
+                        timestamp = Clock.System.now()
+                        field("Node", true) { servers[0].node }
+                        field("Status", true) { utilization.state.name }
+                        field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
+                        field("CPU Usage", true) { "${utilization.cpu}%" }
+                        field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
+                        field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
+                        field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
+                        field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
+                        field("Uptime", true) { utilization.uptimeFormatted }
+                        field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
+                    }
+                }
+            }
+            "upserver" -> {
+                interaction.deferPublicResponse().respond {
+                    val servers = pteroClient.retrieveServersByName(id[1], false).execute()
+                    content = if (interaction.user.checkInfraPermission()) {
+                        "You don't have permissions."
+                    } else if (servers.size == 0) {
+                        "`${id[1]}` was not found."
+                    } else {
+                        servers[0].restart().execute()
+                        "⬆️ `${servers[0].name}` has started."
+                    }
+                }
+            }
+            "restartserver" -> {
+
+            }
+            "downserver" -> {
+
             }
         }
     }
