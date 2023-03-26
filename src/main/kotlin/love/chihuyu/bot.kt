@@ -108,6 +108,7 @@ fun main() = runBlocking {
                 string("text", "Text message to send to chatgpt") {
                     required = true
                 }
+                string("model", "Model of chatgpt to use")
                 number("temperature", "Temperature of ChatGPT message(0~2)") {
                     minValue = .0
                     maxValue = 2.0
@@ -121,6 +122,7 @@ fun main() = runBlocking {
                 string("text", "Text message to send to chatgpt") {
                     required = true
                 }
+                string("model", "Model of chatgpt to use")
                 number("temperature", "Temperature of ChatGPT message(0~2)") {
                     minValue = .0
                     maxValue = 2.0
@@ -135,6 +137,7 @@ fun main() = runBlocking {
                     required = true
                 }
             }
+            subCommand("models", "List of chatgpt's model")
         }
     }
 
@@ -279,6 +282,11 @@ fun main() = runBlocking {
                     "image" -> {
                         interaction.deferPublicResponse().respond {
                             content = ChatGPTBridger.image(openai, command)
+                        }
+                    }
+                    "models" -> {
+                        interaction.deferPublicResponse().respond {
+                            content = "使用可能なモデルの一覧はこちらです\n```${openai.models().joinToString("\n") { it.id.id }}```"
                         }
                     }
                 }

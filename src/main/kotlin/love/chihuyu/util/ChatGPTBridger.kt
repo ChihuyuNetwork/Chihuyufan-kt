@@ -20,7 +20,7 @@ object ChatGPTBridger {
             chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"]!!)
             val completion = openai.chatCompletion(
                 ChatCompletionRequest(
-                    ModelId("gpt-3.5-turbo"),
+                    ModelId(command.strings["model"] ?: "gpt-3.5-turbo"),
                     chatCache[interaction.user.id.value]!!,
                     temperature = command.numbers["temperature"],
                     maxTokens = command.integers["max_tokens"]?.toInt()
