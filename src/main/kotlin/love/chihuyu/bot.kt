@@ -7,9 +7,12 @@ import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
+import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
+import dev.kord.core.behavior.interaction.respondEphemeral
+import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
@@ -30,12 +33,13 @@ import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.ChatGPTBridger
 import love.chihuyu.util.MemberUtils.averageColor
+import love.chihuyu.util.MemberUtils.checkInfraPermission
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-@OptIn(BetaOpenAI::class)
+@OptIn(BetaOpenAI::class, KordUnsafe::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
@@ -210,6 +214,12 @@ fun main() = runBlocking {
                                 embeds = mutableListOf(
                                     EmbedGenerator.nodeInfo(nodes[0], servers)
                                 )
+
+                                actionRow {
+                                    interactionButton(ButtonStyle.Primary, "refreshstatusnode-${nodes[0].name}") {
+                                        label = "Refresh"
+                                    }
+                                }
                             }
                             toRequest()
                         }
@@ -229,7 +239,7 @@ fun main() = runBlocking {
                                 )
 
                                 actionRow {
-                                    interactionButton(ButtonStyle.Primary, "refreshstatus-${servers[0].name}") {
+                                    interactionButton(ButtonStyle.Primary, "refreshstatusserver-${servers[0].name}") {
                                         label = "Refresh"
                                     }
                                     interactionButton(ButtonStyle.Success, "upserver-${servers[0].name}") {
@@ -258,8 +268,13 @@ fun main() = runBlocking {
                         }
                     }
                     "up", "down", "restart", "kill", "send" -> {
+                        if (interaction.user.checkInfraPermission()) {
+                            interaction.respondEphemeral {
+                                content = "You don't have permissions."
+                            }
+                        }
                         interaction.deferPublicResponse().respond {
-                            content = OperationResponder.getInputRespond(interaction, command, pteroClient, OperationType.valueOf(command.data.options.value!![0].name.uppercase()))
+                            content = OperationResponder.getInputRespond(command, pteroClient, OperationType.valueOf(command.data.options.value!![0].name.uppercase()))
                             toRequest()
                         }
                     }
@@ -298,8 +313,8 @@ fun main() = runBlocking {
         val id = interaction.componentId.split("-")
 
         when (id[0]) {
-            "refreshstatus" -> {
-                interaction.deferEphemeralResponse().respond {
+            "refreshstatusserver" -> {
+                interaction.deferPublicMessageUpdate().edit {
                     interaction.message.edit {
                         val servers = pteroClient.retrieveServersByName(id[1], false).execute()
                         val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
@@ -308,32 +323,48 @@ fun main() = runBlocking {
                             EmbedGenerator.serverInfo(servers[0], utilization, serversApplication[0])
                         )
                     }
-                    content = "Status refreshed."
                 }
             }
             "upserver" -> {
+                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
                 interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.UP)
+                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.UP)
                 }
             }
             "restartserver" -> {
+                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
                 interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.RESTART)
+                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.RESTART)
                 }
             }
             "downserver" -> {
+                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
                 interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.DOWN)
+                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.DOWN)
                 }
             }
             "killserver" -> {
+                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
                 interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.KILL)
+                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.KILL)
                 }
             }
             "sendcommand" -> {
+                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
                 interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.SEND)
+                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.SEND)
+                }
+            }
+
+            "refreshstatusnode" -> {
+                interaction.deferPublicMessageUpdate().edit {
+                    interaction.message.edit {
+                        val nodes = pteroApplication.retrieveNodesByName(id[1], false).execute()
+                        val utilizations = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
+                        embeds = mutableListOf(
+                            EmbedGenerator.nodeInfo(nodes[0], utilizations)
+                        )
+                    }
                 }
             }
         }

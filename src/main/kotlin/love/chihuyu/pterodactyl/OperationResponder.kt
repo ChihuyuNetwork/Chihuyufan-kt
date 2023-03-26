@@ -1,18 +1,13 @@
 package love.chihuyu.pterodactyl
 
 import com.mattmalec.pterodactyl4j.client.entities.PteroClient
-import dev.kord.core.entity.interaction.GuildButtonInteraction
-import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.core.entity.interaction.InteractionCommand
-import love.chihuyu.util.MemberUtils.checkInfraPermission
 
 object OperationResponder {
 
-    fun getButtonRespond(pteroClient: PteroClient, id: List<String>, interaction: GuildButtonInteraction, operationType: OperationType): String {
+    fun getButtonRespond(pteroClient: PteroClient, id: List<String>, operationType: OperationType): String {
         val servers = pteroClient.retrieveServersByName(id[1], false).execute()
-        return if (interaction.user.checkInfraPermission()) {
-            "You don't have permissions."
-        } else if (servers.size == 0) {
+        return if (servers.size == 0) {
             "`${id[1]}` was not found."
         } else {
             try {
@@ -45,13 +40,11 @@ object OperationResponder {
         }
     }
 
-    fun getInputRespond(interaction: GuildChatInputCommandInteraction, command: InteractionCommand, pteroClient: PteroClient, operationType: OperationType): String {
+    fun getInputRespond(command: InteractionCommand, pteroClient: PteroClient, operationType: OperationType): String {
         val name = command.strings["name"]
         val commandToSend = command.strings["command"]
         val servers = pteroClient.retrieveServersByName(name, false).execute()
-        return if (interaction.user.checkInfraPermission()) {
-            "You don't have permissions."
-        } else if (servers.size == 0) {
+        return if (servers.size == 0) {
             "`$name` was not found."
         } else {
             try {
