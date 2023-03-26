@@ -1,4 +1,4 @@
-package love.chihuyu.chatgpt
+package love.chihuyu.util
 
 import com.aallam.openai.api.BetaOpenAI
 import com.aallam.openai.api.chat.ChatCompletionRequest
@@ -12,7 +12,7 @@ import dev.kord.core.entity.interaction.GuildChatInputCommandInteraction
 import dev.kord.core.entity.interaction.InteractionCommand
 import love.chihuyu.chatCache
 
-object CommunicationBridge {
+object ChatGPTBridger {
 
     @OptIn(BetaOpenAI::class)
     suspend fun chat(openai: OpenAI, interaction: GuildChatInputCommandInteraction, command: InteractionCommand): String {
@@ -34,7 +34,7 @@ object CommunicationBridge {
     }
 
     @OptIn(BetaOpenAI::class)
-    suspend fun image(openai: OpenAI, interaction: GuildChatInputCommandInteraction, command: InteractionCommand): String {
+    suspend fun image(openai: OpenAI, command: InteractionCommand): String {
         return try {
             openai.imageURL(ImageCreation(command.strings["words"]!!, size = ImageSize.is1024x1024)).last().url
         } catch (e: Throwable) {

@@ -3,14 +3,11 @@ package love.chihuyu
 import com.aallam.openai.api.BetaOpenAI
 import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.client.OpenAI
-import com.mattmalec.pterodactyl4j.DataType
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
-import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
-import dev.kord.common.entity.DiscordPartialEmoji
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.response.respond
@@ -28,10 +25,11 @@ import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
-import love.chihuyu.chatgpt.CommunicationBridge
+import love.chihuyu.pterodactyl.EmbedGenerator
+import love.chihuyu.pterodactyl.OperationResponder
+import love.chihuyu.pterodactyl.OperationType
+import love.chihuyu.util.ChatGPTBridger
 import love.chihuyu.util.MemberUtils.averageColor
-import love.chihuyu.util.MemberUtils.checkInfraPermission
-import java.time.format.DateTimeFormatter
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
@@ -206,22 +204,9 @@ fun main() = runBlocking {
                                 content = "`$name` was not found."
                             } else {
                                 val servers = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
-
-                                embed {
-                                    title = "Information of `${nodes[0].name}`"
-                                    color = Color(100, 255, 100)
-                                    description = nodes[0].description
-                                    timestamp = Clock.System.now()
-                                    field("Address", true) { nodes[0].fqdn }
-                                    field("Allocations", true) { nodes[0].retrieveAllocations().execute().size.toString() }
-                                    field("Directory", true) { nodes[0].retrieveConfiguration().execute().system.dataPath }
-                                    field("CPU Usage", true) { "${"%.2f".format(servers.sumOf { it.cpu })}%" }
-                                    field("Memory Usage", true) { "${"%.2f".format(servers.sumOf { it.memory } / 1024.0 / 1024.0 / 1024.0)}/${nodes[0].allocatedMemory.toInt() / 2048.0}GB" }
-                                    field("Disk Usage", true) { "${"%.2f".format(servers.sumOf { it.disk } / 1024.0 / 1024.0 / 1024.0)}GB" }
-                                    field("Network Ingress", true) { "${"%.2f".format(servers.sumOf { it.networkIngress } / 1024.0 / 1024.0)}MB" }
-                                    field("Network Egress", true) { "${"%.2f".format(servers.sumOf { it.networkEgress } / 1024.0 / 1024.0)}MB" }
-                                    field("Creation", true) { nodes[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
-                                }
+                                embeds = mutableListOf(
+                                    EmbedGenerator.nodeInfo(nodes[0], servers)
+                                )
                             }
                             toRequest()
                         }
@@ -236,119 +221,34 @@ fun main() = runBlocking {
                                 val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
                                 val utilization = servers[0].retrieveUtilization().execute()
 
-                                embed {
-                                    title = "Information of `${servers[0].name}`"
-                                    color = when (utilization.state) {
-                                        UtilizationState.STARTING -> Color(255, 255, 100)
-                                        UtilizationState.STOPPING -> Color(255, 255, 100)
-                                        UtilizationState.RUNNING -> Color(100, 255, 100)
-                                        UtilizationState.OFFLINE -> Color(255, 100, 100)
-                                        else -> Color(255, 100, 100)
-                                    }
-                                    description = servers[0].description
-                                    timestamp = Clock.System.now()
-                                    field("Node", true) { servers[0].node }
-                                    field("Status", true) { utilization.state.name }
-                                    field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
-                                    field("CPU Usage", true) { "${utilization.cpu}%" }
-                                    field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
-                                    field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
-                                    field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
-                                    field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
-                                    field("Uptime", true) { utilization.uptimeFormatted }
-                                    field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
-                                }
+                                embeds = mutableListOf(
+                                    EmbedGenerator.serverInfo(servers[0], utilization, serversApplication[0])
+                                )
 
                                 actionRow {
-                                    interactionButton(ButtonStyle.Primary, "upserver-${servers[0].name}") {
+                                    interactionButton(ButtonStyle.Success, "refreshstatus-${servers[0].name}") {
+                                        label = "Refresh"
+                                    }
+                                    interactionButton(ButtonStyle.Success, "upserver-${servers[0].name}") {
                                         label = "Start"
-                                        emoji = DiscordPartialEmoji(name = "⬆️")
+                                    }
+                                    interactionButton(ButtonStyle.Primary, "restartserver-${servers[0].name}") {
+                                        label = "Restart"
+                                    }
+                                    interactionButton(ButtonStyle.Danger, "downserver-${servers[0].name}") {
+                                        label = "Stop"
+                                    }
+                                    interactionButton(ButtonStyle.Danger, "killserver-${servers[0].name}") {
+                                        label = "Kill"
                                     }
                                 }
                             }
                             toRequest()
                         }
                     }
-                    "up" -> {
+                    "up", "down", "restart", "kill", "send" -> {
                         interaction.deferPublicResponse().respond {
-                            val name = command.strings["name"]
-                            val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            content = if (interaction.user.checkInfraPermission()) {
-                                "You don't have permissions."
-                            } else if (servers.size == 0) {
-                                "`$name` was not found."
-                            } else {
-                                servers[0].start().execute()
-                                "⬆️ `${servers[0].name}` has started."
-                            }
-                            toRequest()
-                        }
-                    }
-                    "down" -> {
-                        interaction.deferPublicResponse().respond {
-                            val name = command.strings["name"]
-                            val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            content = if (interaction.user.checkInfraPermission()) {
-                                "You don't have permissions."
-                            } else if (servers.size == 0) {
-                                "`$name` was not found."
-                            } else {
-                                servers[0].stop().execute()
-                                "⬇️ `${servers[0].name}` has stopped."
-                            }
-                            toRequest()
-                        }
-                    }
-                    "restart" -> {
-                        interaction.deferPublicResponse().respond {
-                            val name = command.strings["name"]
-                            val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            content = if (interaction.user.checkInfraPermission()) {
-                                "You don't have permissions."
-                            } else if (servers.size == 0) {
-                                "`$name` was not found."
-                            } else {
-                                servers[0].restart().execute()
-                                "⬆️ `${servers[0].name}` has restarted."
-                            }
-                            toRequest()
-                        }
-                    }
-                    "kill" -> {
-                        interaction.deferPublicResponse().respond {
-                            val name = command.strings["name"]
-                            val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            content = if (interaction.user.checkInfraPermission()) {
-                                "You don't have permissions."
-                            } else if (servers.size == 0) {
-                                "`$name` was not found."
-                            } else {
-                                servers[0].kill().execute()
-                                "\uD83D\uDC80 `$name` has killed."
-                            }
-                            toRequest()
-                        }
-                    }
-                    "send" -> {
-                        interaction.deferPublicResponse().respond {
-                            val name = command.strings["name"]
-                            val command = command.strings["command"]
-                            val servers = pteroClient.retrieveServersByName(name, false).execute()
-                            content = if (interaction.user.checkInfraPermission()) {
-                                "You don't have permissions."
-                            } else if (servers.size == 0) {
-                                "`$name` was not found."
-                            } else {
-                                try {
-                                    servers[0].sendCommand(command).execute()
-                                    "\uD83D\uDCAB `$command` sent to `$name`"
-                                } catch (e: Throwable) {
-                                    "Error encountered!\n```${
-                                        e.message + "\n" + 
-                                        e.stackTrace.joinToString("\n")
-                                    }```"
-                                }
-                            }
+                            content = OperationResponder.getInputRespond(interaction, command, pteroClient, OperationType.valueOf(command.data.options.value!![0].name.uppercase()))
                             toRequest()
                         }
                     }
@@ -359,18 +259,18 @@ fun main() = runBlocking {
                     "new" -> {
                         interaction.deferPublicResponse().respond {
                             chatCache[interaction.user.id.value] = mutableListOf()
-                            content = CommunicationBridge.chat(openai, interaction, command)
+                            content = ChatGPTBridger.chat(openai, interaction, command)
                         }
                     }
                     "reply" -> {
                         interaction.deferPublicResponse().respond {
                             chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
-                            content = CommunicationBridge.chat(openai, interaction,command)
+                            content = ChatGPTBridger.chat(openai, interaction,command)
                         }
                     }
                     "image" -> {
                         interaction.deferPublicResponse().respond {
-                            content = CommunicationBridge.image(openai, interaction, command)
+                            content = ChatGPTBridger.image(openai, command)
                         }
                     }
                 }
@@ -383,52 +283,37 @@ fun main() = runBlocking {
 
         when (id[0]) {
             "refreshstatus" -> {
-                interaction.message.edit {
-                    val servers = pteroClient.retrieveServersByName(id[1], false).execute()
-                    val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
-                    val utilization = servers[0].retrieveUtilization().execute()
-                    embed {
-                        title = "Information of `${servers[0].name}`"
-                        color = when (utilization.state) {
-                            UtilizationState.STARTING -> Color(255, 255, 100)
-                            UtilizationState.STOPPING -> Color(255, 255, 100)
-                            UtilizationState.RUNNING -> Color(100, 255, 100)
-                            UtilizationState.OFFLINE -> Color(255, 100, 100)
-                            else -> Color(255, 100, 100)
-                        }
-                        description = servers[0].description
-                        timestamp = Clock.System.now()
-                        field("Node", true) { servers[0].node }
-                        field("Status", true) { utilization.state.name }
-                        field("Primary Allocation", true) { servers[0].primaryAllocation.fullAddress }
-                        field("CPU Usage", true) { "${utilization.cpu}%" }
-                        field("Memory Usage", true) { utilization.getMemoryFormatted(DataType.GB) }
-                        field("Disk Usage", true) { utilization.getDiskFormatted(DataType.GB) }
-                        field("Network Ingress", true) { utilization.getNetworkIngressFormatted(DataType.MB) }
-                        field("Network Egress", true) { utilization.getNetworkEgressFormatted(DataType.MB) }
-                        field("Uptime", true) { utilization.uptimeFormatted }
-                        field("Creation", true) { serversApplication[0].creationDate.format(DateTimeFormatter.ofPattern("YYYY/MM/dd HH:mm:ss")) }
+                interaction.deferEphemeralResponse().respond {
+                    interaction.message.edit {
+                        val servers = pteroClient.retrieveServersByName(id[1], false).execute()
+                        val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
+                        val utilization = servers[0].retrieveUtilization().execute()
+                        embeds = mutableListOf(
+                            EmbedGenerator.serverInfo(servers[0], utilization, serversApplication[0])
+                        )
                     }
+                    content = "Status refreshed."
                 }
             }
             "upserver" -> {
                 interaction.deferPublicResponse().respond {
-                    val servers = pteroClient.retrieveServersByName(id[1], false).execute()
-                    content = if (interaction.user.checkInfraPermission()) {
-                        "You don't have permissions."
-                    } else if (servers.size == 0) {
-                        "`${id[1]}` was not found."
-                    } else {
-                        servers[0].restart().execute()
-                        "⬆️ `${servers[0].name}` has started."
-                    }
+                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.UP)
                 }
             }
             "restartserver" -> {
-
+                interaction.deferPublicResponse().respond {
+                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.RESTART)
+                }
             }
             "downserver" -> {
-
+                interaction.deferPublicResponse().respond {
+                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.DOWN)
+                }
+            }
+            "killserver" -> {
+                interaction.deferPublicResponse().respond {
+                    content = OperationResponder.getButtonRespond(pteroClient, id, interaction, OperationType.KILL)
+                }
             }
         }
     }
