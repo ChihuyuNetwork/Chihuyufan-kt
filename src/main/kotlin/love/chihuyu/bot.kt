@@ -23,8 +23,6 @@ import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
-import io.ktor.client.request.forms.*
-import io.ktor.utils.io.*
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -300,7 +298,7 @@ fun main() = runBlocking {
                         }
                     }
                     "models" -> {
-                        interaction.deferPublicResponse().respond {
+                        interaction.deferEphemeralResponse().respond {
                             content = "使用可能なモデルの一覧はこちらです\n```${openai.models().joinToString("\n") { it.id.id }}```"
                         }
                     }
