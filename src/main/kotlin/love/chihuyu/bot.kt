@@ -318,14 +318,22 @@ fun main() = runBlocking {
             }
             "youtube-thumbnail" -> {
                 interaction.deferPublicResponse().respond {
-                    val id = interaction.command.strings["target"]!!
+                    val target = interaction.command.strings["target"]!!
                     val mode = interaction.command.strings["mode"]!!
                     embed {
-                        image = "https://img.youtube.com/vi/${
-                            if ("https://" in id) {
-                                id.substringAfter("v=").substringBefore('&')
-                            } else id
+                        val id = "https://img.youtube.com/vi/${
+                            if ("https://" in target) {
+                                if ("youtu.be" in target) {
+                                    target.substringAfter("be/").substringBefore('&')
+                                } else if ("v=" in target) {
+                                    target.substringAfter("v=").substringBefore('&')
+                                } else if ("shorts" in target) {
+                                    target.substringAfter("shorts/").substringBefore('&')
+                                } else target
+                            } else target
                         }/$mode.jpg"
+                        timestamp = Clock.System.now()
+                        image = id
                     }
                 }
             }
