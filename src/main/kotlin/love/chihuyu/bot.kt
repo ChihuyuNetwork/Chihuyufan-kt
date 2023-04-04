@@ -30,7 +30,6 @@ import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.ChatGPTBridger
-import love.chihuyu.util.MemberUtils.averageColor
 import love.chihuyu.util.MemberUtils.checkInfraPermission
 
 @OptIn(BetaOpenAI::class)
@@ -141,6 +140,19 @@ fun main() = runBlocking {
             }
             subCommand("models", "List of chatgpt's model")
         }
+        input("youtube-thumbnail", "Show thumbnails of youtube video") {
+            string("target", "ID or URL of youtube video") {
+                required = true
+            }
+            string("mode", "Thumbnail type of video") {
+                required = true
+                choice("Default", "default")
+                choice("High Quality", "hqdefault")
+                choice("Medium Quality", "mqdefault")
+                choice("Standard", "sddefault")
+                choice("Maximum", "maxresdefault")
+            }
+        }
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -158,7 +170,7 @@ fun main() = runBlocking {
                     embed {
                         val member = command.members["member"] ?: interaction.user
                         title = (member.nickname ?: member.username) + "#${member.discriminator}"
-                        color = member.averageColor()
+                        color = member.accentColor
                         val avatar = (member.memberAvatar ?: member.avatar ?: member.defaultAvatar)
                         image = avatar.cdnUrl.toUrl {
                             size = Image.Size.Size4096
@@ -174,7 +186,7 @@ fun main() = runBlocking {
                     embed {
                         val member = command.members["member"] ?: interaction.user
                         title = (member.nickname ?: member.username) + "#${member.discriminator}"
-                        color = member.averageColor()
+                        color = member.accentColor
                         field {
                             value = member.roles.toList().sortedByDescending { it.rawPosition }.joinToString(" ") { it.mention }
                         }
@@ -301,6 +313,19 @@ fun main() = runBlocking {
                         interaction.deferEphemeralResponse().respond {
                             content = "使用可能なモデルの一覧はこちらです\n```${openai.models().joinToString("\n") { it.id.id }}```"
                         }
+                    }
+                }
+            }
+            "youtube-thumbnail" -> {
+                interaction.deferPublicResponse().respond {
+                    val id = interaction.command.strings["target"]!!
+                    val mode = interaction.command.strings["mode"]!!
+                    embed {
+                        image = "https://img.youtube.com/vi/${
+                            if ("https://" in id) {
+                                id.substringAfter("v=").substringBefore('&')
+                            } else id
+                        }/$mode.jpg"
                     }
                 }
             }
