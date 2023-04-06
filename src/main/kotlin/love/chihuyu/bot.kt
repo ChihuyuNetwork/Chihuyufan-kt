@@ -7,6 +7,7 @@ import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
+import dev.kord.common.Color
 import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.core.Kord
@@ -103,6 +104,7 @@ fun main() = runBlocking {
                     required = true
                 }
             }
+            subCommand("backups", "List all server's backups")
         }
         input("chatgpt", "Use CahtGPT API") {
             subCommand("new", "Start new session with ChatGPT") {
@@ -286,6 +288,21 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             content = OperationResponder.getInputRespond(command, pteroClient, OperationType.valueOf(command.data.options.value!![0].name.uppercase()))
                             toRequest()
+                        }
+                    }
+                    "backups" -> {
+                        interaction.deferPublicResponse().respond {
+                            embed {
+                                timestamp = Clock.System.now()
+                                title = "Backup List"
+                                color = Color(100, 255, 100)
+                                pteroApplication.retrieveServers().execute().forEach {
+                                    val backups = pteroClient.retrieveServerByIdentifier(it.identifier).execute().retrieveBackups().execute()
+                                    if (backups.isNotEmpty()) field(it.name, false) {
+                                        backups.joinToString("\n") { backup -> "${backup.name} | ${"%.2f".format(backup.size / 1024.0 / 1024.0 / 1024.0)}GB" }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
