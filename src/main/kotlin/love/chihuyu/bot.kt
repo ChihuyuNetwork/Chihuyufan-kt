@@ -88,15 +88,25 @@ fun main() = runBlocking {
         }
         input("boketsu", "Manage boketsu user's boketsu points") {
             subCommand("add", "Add specify boketsu points to user") {
-                user("user", "User to add boketsu point")
-                integer("point", "Amount of boketsu point to add")
+                user("user", "User to add boketsu point") {
+                    required = true
+                }
+                integer("point", "Amount of boketsu point to add") {
+                    required = true
+                }
             }
             subCommand("remove", "Remove specify boketsu points to user") {
-                user("user", "User to remove boketsu point")
-                integer("point", "Amount of boketsu point to remove")
+                user("user", "User to remove boketsu point") {
+                    required = true
+                }
+                integer("point", "Amount of boketsu point to remove") {
+                    required = true
+                }
             }
             subCommand("stats", "Show boketsu stats of specify user") {
-                user("user", "User to show boketsu stats")
+                user("user", "User to show boketsu stats") {
+                    required = true
+                }
             }
         }
         input("pterodactyl", "Manage chihuyu network's pterodactyl") {
@@ -397,6 +407,11 @@ fun main() = runBlocking {
             }
 
             "boketsu" -> {
+                if (interaction.user.id.value != 716263398886604830.toULong()) {
+                    interaction.deferPublicResponse().respond {
+                        content = "貴様、ボケツではないな・・・"
+                    }
+                }
                 when (command.data.options.value?.get(0)?.name) {
                     "add" -> {
                         interaction.deferPublicResponse().respond {
