@@ -23,6 +23,11 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
+    implementation("mysql:mysql-connector-java:8.0.30")
+    implementation("org.jetbrains.exposed:exposed-core:0.40.1")
+    implementation("org.jetbrains.exposed:exposed-dao:0.40.1")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.40.1")
+    implementation("org.jetbrains.exposed:exposed-java-time:0.40.1")
     implementation(kotlin("stdlib-jdk8"))
 }
 

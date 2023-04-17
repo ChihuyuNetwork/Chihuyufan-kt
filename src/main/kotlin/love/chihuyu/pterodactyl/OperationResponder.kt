@@ -5,8 +5,8 @@ import dev.kord.core.entity.interaction.InteractionCommand
 
 object OperationResponder {
 
-    fun getButtonRespond(pteroClient: PteroClient, id: List<String>, operationType: OperationType): String {
-        val servers = pteroClient.retrieveServersByName(id[1], false).execute()
+    fun getButtonRespond(pteroClient: PteroClient, id: String, operationType: OperationType): String {
+        val servers = pteroClient.retrieveServersByName(id.split("-")[1], false).execute()
         return if (servers.size == 0) {
             "`${id[1]}` was not found."
         } else {

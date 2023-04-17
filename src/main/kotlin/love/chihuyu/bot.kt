@@ -15,6 +15,8 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.cache.data.RemovedReactionData
+import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
@@ -24,14 +26,23 @@ import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
+import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
+import love.chihuyu.database.BoketsuPoint
+import love.chihuyu.database.BoketsuPoints
 import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.ChatGPTBridger
 import love.chihuyu.util.MemberUtils.checkInfraPermission
+import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.SchemaUtils
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.sql.transactions.transaction
+import java.io.File
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
@@ -42,6 +53,7 @@ fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
     val openai = OpenAI(System.getenv("OPENAI_TOKEN"))
+    val dbFile = File("./data.db")
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
@@ -56,6 +68,17 @@ fun main() = runBlocking {
         }
     }
 
+    if (!dbFile.exists()) {
+        File("./data.db").mkdir()
+        dbFile.createNewFile()
+    }
+
+    Database.connect("jdbc:sqlite:./data.db", driver = "org.sqlite.JDBC")
+    transaction {
+        addLogger(StdOutSqlLogger)
+        SchemaUtils.createMissingTablesAndColumns(BoketsuPoints, withLogs = true)
+    }
+
     kord.createGlobalApplicationCommands {
         input("ping", "Pong!")
         input("avatar", "Display member's avatar") {
@@ -63,6 +86,19 @@ fun main() = runBlocking {
         }
         input("roles", "Display member's roles") {
             user("member", "Specify user to display roles")
+        }
+        input("boketsu", "Manage boketsu user's boketsu points") {
+            subCommand("add", "Add specify boketsu points to user") {
+                user("user", "User to add boketsu point")
+                integer("point", "Amount of boketsu point to add")
+            }
+            subCommand("remove", "Remove specify boketsu points to user") {
+                user("user", "User to remove boketsu point")
+                integer("point", "Amount of boketsu point to remove")
+            }
+            subCommand("stats", "Show boketsu stats of specify user") {
+                user("user", "User to show boketsu stats")
+            }
         }
         input("pterodactyl", "Manage chihuyu network's pterodactyl") {
             subCommand("servers", "List all servers")
@@ -155,6 +191,7 @@ fun main() = runBlocking {
                 choice("Maximum", "maxresdefault")
             }
         }
+        input("valorant-spread", "Spread members play valorant for custom mode")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -164,7 +201,6 @@ fun main() = runBlocking {
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
-                    toRequest()
                 }
             }
             "avatar" -> {
@@ -180,7 +216,6 @@ fun main() = runBlocking {
                         }
                         timestamp = Clock.System.now()
                     }
-                    toRequest()
                 }
             }
             "roles" -> {
@@ -194,8 +229,19 @@ fun main() = runBlocking {
                         }
                         timestamp = Clock.System.now()
                     }
-                    toRequest()
                 }
+            }
+            "valorant-spread" -> {
+                val msg = interaction.deferPublicResponse().respond {
+                    content = "カスタムに参加したい人はリアクションを押してください"
+                    actionRow {
+                        interactionButton(ButtonStyle.Primary, "valorantspread") {
+                            label = "Spread!"
+                        }
+                    }
+                }.message
+
+                msg.addReaction(ReactionEmoji.Companion.from(RemovedReactionData(name = "white_check_mark")))
             }
             "pterodactyl" -> {
                 when (command.data.options.value?.get(0)?.name) {
@@ -212,7 +258,6 @@ fun main() = runBlocking {
                                     }
                                 } " + "`${it.description}`: `${it.name}`"
                             }
-                            toRequest()
                         }
                     }
                     "nodeinfo" -> {
@@ -233,7 +278,6 @@ fun main() = runBlocking {
                                     }
                                 }
                             }
-                            toRequest()
                         }
                     }
                     "serverinfo" -> {
@@ -276,7 +320,6 @@ fun main() = runBlocking {
                                     }
                                 }
                             }
-                            toRequest()
                         }
                     }
                     "up", "down", "restart", "kill", "send" -> {
@@ -287,7 +330,6 @@ fun main() = runBlocking {
                         }
                         interaction.deferPublicResponse().respond {
                             content = OperationResponder.getInputRespond(command, pteroClient, OperationType.valueOf(command.data.options.value!![0].name.uppercase()))
-                            toRequest()
                         }
                     }
                     "backups" -> {
@@ -354,64 +396,98 @@ fun main() = runBlocking {
                     }
                 }
             }
+
+            "boketsu" -> {
+                when (command.data.options.value?.get(0)?.name) {
+                    "add" -> {
+                        interaction.deferPublicResponse().respond {
+                            val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
+                            val amount = interaction.command.integers["point"]!!
+                            BoketsuPoint.findOrNew(user.id.value).point += amount
+                            content = "${user.displayName}に**${amount}ボケツポイント**を追加"
+                        }
+                    }
+                    "remove" -> {
+                        interaction.deferPublicResponse().respond {
+                            val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
+                            val amount = interaction.command.integers["point"]!!
+                            BoketsuPoint.findOrNew(user.id.value).point -= amount
+                            content = "${user.displayName}から**${amount}ボケツポイント**を没収"
+                        }
+                    }
+                    "stats" -> {
+                        interaction.deferPublicResponse().respond {
+                            val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
+                            content = "${user.displayName}は**${BoketsuPoint.findOrNew(user.id.value).point}ボケツポイント**を所有しています"
+                        }
+                    }
+                }
+            }
         }
     }
 
     kord.on<GuildButtonInteractionCreateEvent> {
-        val id = interaction.componentId.split("-")
-
-        when (id[0]) {
-            "refreshstatusserver" -> {
-                interaction.deferPublicMessageUpdate().edit {
-                    interaction.message.edit {
-                        val servers = pteroClient.retrieveServersByName(id[1], false).execute()
-                        val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
-                        val utilization = servers[0].retrieveUtilization().execute()
-                        embeds = mutableListOf(
-                            EmbedGenerator.serverInfo(servers[0], utilization, serversApplication[0])
-                        )
+        when (val id = interaction.componentId) {
+            "valorantspread" -> {
+                interaction.deferPublicResponse().respond {
+                    val reactors = interaction.message.fetchMessage().getReactors(ReactionEmoji.Companion.from(RemovedReactionData(null, "white_check_mark")))
+                    val teams = reactors.toList().shuffled().chunked(reactors.count() / 2)
+                    content = "`Attacker`\n ```${teams[0].joinToString("\n")}```\n`Defender`\n ```${teams[1].joinToString("\n")}```"
+                }
+            }
+            else -> when (val splid = id.split("-")[0]) {
+                "refreshstatusserver" -> {
+                    interaction.deferPublicMessageUpdate().edit {
+                        interaction.message.edit {
+                            val servers = pteroClient.retrieveServersByName(id.split("-")[1], false).execute()
+                            val serversApplication = pteroApplication.retrieveServersByNode(pteroApplication.retrieveNodesByName(servers[0].node, true).execute()[0]).execute()
+                            val utilization = servers[0].retrieveUtilization().execute()
+                            embeds = mutableListOf(
+                                EmbedGenerator.serverInfo(servers[0], utilization, serversApplication[0])
+                            )
+                        }
                     }
                 }
-            }
-            "upserver" -> {
-                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
-                interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.UP)
+                "upserver" -> {
+                    if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
+                    interaction.deferPublicResponse().respond {
+                        content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.UP)
+                    }
                 }
-            }
-            "restartserver" -> {
-                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
-                interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.RESTART)
+                "restartserver" -> {
+                    if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
+                    interaction.deferPublicResponse().respond {
+                        content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.RESTART)
+                    }
                 }
-            }
-            "downserver" -> {
-                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
-                interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.DOWN)
+                "downserver" -> {
+                    if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
+                    interaction.deferPublicResponse().respond {
+                        content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.DOWN)
+                    }
                 }
-            }
-            "killserver" -> {
-                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
-                interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.KILL)
+                "killserver" -> {
+                    if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
+                    interaction.deferPublicResponse().respond {
+                        content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.KILL)
+                    }
                 }
-            }
-            "sendcommand" -> {
-                if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
-                interaction.deferPublicResponse().respond {
-                    content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.SEND)
+                "sendcommand" -> {
+                    if (interaction.user.checkInfraPermission()) interaction.respondEphemeral { content = "You don't have permissions." }
+                    interaction.deferPublicResponse().respond {
+                        content = OperationResponder.getButtonRespond(pteroClient, id, OperationType.SEND)
+                    }
                 }
-            }
 
-            "refreshstatusnode" -> {
-                interaction.deferPublicMessageUpdate().edit {
-                    interaction.message.edit {
-                        val nodes = pteroApplication.retrieveNodesByName(id[1], false).execute()
-                        val utilizations = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
-                        embeds = mutableListOf(
-                            EmbedGenerator.nodeInfo(nodes[0], utilizations)
-                        )
+                "refreshstatusnode" -> {
+                    interaction.deferPublicMessageUpdate().edit {
+                        interaction.message.edit {
+                            val nodes = pteroApplication.retrieveNodesByName(id.split("-")[1], false).execute()
+                            val utilizations = pteroClient.retrieveServers().execute().filter { it.node == nodes[0].name }.map { it.retrieveUtilization().execute() }
+                            embeds = mutableListOf(
+                                EmbedGenerator.nodeInfo(nodes[0], utilizations)
+                            )
+                        }
                     }
                 }
             }
