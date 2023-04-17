@@ -69,7 +69,6 @@ fun main() = runBlocking {
     }
 
     if (!dbFile.exists()) {
-        File("./data.db").mkdir()
         dbFile.createNewFile()
     }
 
