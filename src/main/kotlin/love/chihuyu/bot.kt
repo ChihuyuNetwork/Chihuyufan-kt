@@ -407,18 +407,13 @@ fun main() = runBlocking {
             }
 
             "boketsu" -> {
-                if (interaction.user.id.value != 716263398886604830.toULong()) {
-                    interaction.deferPublicResponse().respond {
-                        content = "貴様、ボケツではないな・・・"
-                    }
-                }
                 when (command.data.options.value?.get(0)?.name) {
                     "add" -> {
                         interaction.deferPublicResponse().respond {
                             val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                             val amount = interaction.command.integers["point"]!!
                             BoketsuPoint.findOrNew(user.id.value).point += amount
-                            content = "${user.displayName}に**${amount}ボケツポイント**を追加"
+                            content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}に**${amount}ボケツポイント**を追加"
                         }
                     }
                     "remove" -> {
@@ -426,7 +421,7 @@ fun main() = runBlocking {
                             val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                             val amount = interaction.command.integers["point"]!!
                             BoketsuPoint.findOrNew(user.id.value).point -= amount
-                            content = "${user.displayName}から**${amount}ボケツポイント**を没収"
+                            content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}から**${amount}ボケツポイント**を没収"
                         }
                     }
                     "stats" -> {
