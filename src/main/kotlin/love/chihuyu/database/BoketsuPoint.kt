@@ -9,7 +9,8 @@ class BoketsuPoint(id: EntityID<Int>) : IntEntity(id) {
     companion object : IntEntityClass<BoketsuPoint>(BoketsuPoints) {
         inline fun findOrNew(snowflake: ULong, crossinline init: BoketsuPoint.() -> Unit = {}) =
             find(snowflake) ?: new {
-                this.snowflake
+                this.snowflake = snowflake
+                this.point = 0
                 transaction {
                     init()
                 }
