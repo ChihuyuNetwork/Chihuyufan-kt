@@ -409,36 +409,42 @@ fun main() = runBlocking {
             "boketsu" -> {
                 when (command.data.options.value?.get(0)?.name) {
                     "add" -> {
-                        newSuspendedTransaction {
-                            interaction.deferPublicResponse().respond {
+                        interaction.deferPublicResponse().respond {
+                            newSuspendedTransaction {
+                                addLogger(StdOutSqlLogger)
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value).point += amount
+                                BoketsuPoint.findOrNew(user.id.value) {
+                                    point += amount
+                                }
                                 content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}に**${amount}ボケツポイント**を追加"
                             }
                         }
                     }
                     "remove" -> {
-                        newSuspendedTransaction {
-                            interaction.deferPublicResponse().respond {
+                        interaction.deferPublicResponse().respond {
+                            newSuspendedTransaction {
+                                addLogger(StdOutSqlLogger)
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value).point -= amount
+                                BoketsuPoint.findOrNew(user.id.value) {
+                                    point -= amount
+                                }
                                 content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}から**${amount}ボケツポイント**を没収"
                             }
                         }
                     }
                     "stats" -> {
-                        newSuspendedTransaction {
-                            interaction.deferPublicResponse().respond {
+                        interaction.deferPublicResponse().respond {
+                            newSuspendedTransaction {
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 content = "${user.displayName}は**${BoketsuPoint.findOrNew(user.id.value).point}ボケツポイント**を所有しています"
                             }
                         }
                     }
                     "ranking" -> {
-                        newSuspendedTransaction {
-                            interaction.deferPublicResponse().respond {
+                        interaction.deferPublicResponse().respond {
+                            newSuspendedTransaction {
                                 fun memberName(r: ResultRow) = suspend { interaction.guild.getMember(Snowflake(r[BoketsuPoints.snowflake])).displayName }
                                 content = BoketsuPoints.selectAll().limit(20).sortedByDescending { it[BoketsuPoints.point] }.filter { it[BoketsuPoints.point] != 0L }.mapIndexed { index, resultRow ->
                                     "${index.inc()}. ${memberName(resultRow).invoke()} (${resultRow[BoketsuPoints.point]}pt)"
