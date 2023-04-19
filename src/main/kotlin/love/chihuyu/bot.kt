@@ -440,7 +440,7 @@ fun main() = runBlocking {
                         newSuspendedTransaction {
                             interaction.deferPublicResponse().respond {
                                 fun memberName(r: ResultRow) = suspend { interaction.guild.getMember(Snowflake(r[BoketsuPoints.snowflake])).displayName }
-                                content = BoketsuPoints.selectAll().limit(20).sortedByDescending { it[BoketsuPoints.point] }.mapIndexed { index, resultRow ->
+                                content = BoketsuPoints.selectAll().limit(20).sortedByDescending { it[BoketsuPoints.point] }.filter { it[BoketsuPoints.point] != 0L }.mapIndexed { index, resultRow ->
                                     "${index.inc()}. ${memberName(resultRow).invoke()} (${resultRow[BoketsuPoints.point]}pt)"
                                 }.joinToString("\n")
                             }
