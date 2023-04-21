@@ -414,9 +414,7 @@ fun main() = runBlocking {
                                 addLogger(StdOutSqlLogger)
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value) {
-                                    point += amount
-                                }
+                                BoketsuPoint.findOrNew(user.id.value).point += amount
                                 content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}に**${amount}ボケツポイント**を追加"
                             }
                         }
@@ -427,9 +425,7 @@ fun main() = runBlocking {
                                 addLogger(StdOutSqlLogger)
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value) {
-                                    point -= amount
-                                }
+                                BoketsuPoint.findOrNew(user.id.value).point -= 1
                                 content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}から**${amount}ボケツポイント**を没収"
                             }
                         }
