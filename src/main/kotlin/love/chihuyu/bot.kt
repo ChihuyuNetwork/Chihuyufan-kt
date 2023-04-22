@@ -17,8 +17,10 @@ import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.cache.data.RemovedReactionData
 import dev.kord.core.entity.ReactionEmoji
+import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.exception.EntityNotFoundException
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
@@ -200,6 +202,7 @@ fun main() = runBlocking {
             }
         }
         input("valorant-spread", "Spread members play valorant for custom mode")
+        input("message-ranking", "Show ranking of all users messages")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -250,6 +253,28 @@ fun main() = runBlocking {
                 }.message
 
                 msg.addReaction(ReactionEmoji.Companion.from(RemovedReactionData(name = "white_check_mark")))
+            }
+            "message-ranking" -> {
+                interaction.deferPublicResponse().respond {
+                    content = "最新！ちふゆ鯖メッセージランキング"
+                    val messageCountMap = mutableMapOf<Snowflake, Int>()
+                    repeat(interaction.guild.members.toList().size) {
+                        interaction.guild.fetchGuild().channels.toList().forEach { channel ->
+                            (channel.fetchChannel() as? TextChannel ?: return@forEach).messages.toList().forEach { message ->
+                                messageCountMap[message.fetchMessage().author!!.id] = (messageCountMap[message.fetchMessage().author!!.id] ?: 0).inc()
+                            }
+                        }
+                    }
+                    messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
+                        content += "\n${index.inc()}. ${
+                            try {
+                                interaction.guild.getMember(pair.first).displayName
+                            } catch (e: EntityNotFoundException) {
+                                kord.getUser(pair.first)?.username ?: "Deleted User"
+                            }
+                        } (${pair.second}メッセージ)"
+                    }
+                }
             }
             "pterodactyl" -> {
                 when (command.data.options.value?.get(0)?.name) {
