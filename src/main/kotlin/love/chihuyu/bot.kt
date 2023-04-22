@@ -52,7 +52,7 @@ fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
     val openai = OpenAI(System.getenv("OPENAI_TOKEN"))
-    val dbFile = File("/home/server/chihuyufan-kt/", "data.db")
+    val dbFile = File("data.db")
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
