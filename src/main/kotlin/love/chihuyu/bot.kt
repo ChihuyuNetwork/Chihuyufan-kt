@@ -8,7 +8,6 @@ import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
-import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
@@ -47,7 +46,7 @@ import java.io.File
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-@OptIn(BetaOpenAI::class, KordUnsafe::class)
+@OptIn(BetaOpenAI::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
