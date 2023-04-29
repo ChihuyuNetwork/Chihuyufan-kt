@@ -293,7 +293,7 @@ fun main() = runBlocking {
                         content = """
                             メッセージをカウント中・・・
 
-                            ${channels.indexOf(channel)}/${channels.size + threads.size}チャンネル/スレッドが集計完了しました
+                            `${channels.indexOf(channel)}/${channels.size + threads.size}`チャンネル/スレッドが集計完了しました
                         """.trimIndent()
                     }
                 }
@@ -305,7 +305,7 @@ fun main() = runBlocking {
                         content = """
                             メッセージをカウント中・・・
 
-                            ${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}チャンネル/スレッドが集計完了しました
+                            `${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}`チャンネル/スレッドが集計完了しました
                         """.trimIndent()
                     }
                 }
