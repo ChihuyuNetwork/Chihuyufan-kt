@@ -165,7 +165,7 @@ fun main() = runBlocking {
                     minValue = .0
                     maxValue = 2.0
                 }
-                int("max_tokens", "Max message length (100~4000)") {
+                integer("max_tokens", "Max message length (100~4000)") {
                     minValue = 100
                     maxValue = 4000
                 }
@@ -179,7 +179,7 @@ fun main() = runBlocking {
                     minValue = .0
                     maxValue = 2.0
                 }
-                int("max_tokens", "Max message length (100~4000)") {
+                integer("max_tokens", "Max message length (100~4000)") {
                     minValue = 100
                     maxValue = 4000
                 }
@@ -226,7 +226,7 @@ fun main() = runBlocking {
                         val avatar = (member.memberAvatar ?: member.avatar ?: member.defaultAvatar)
                         image = avatar.cdnUrl.toUrl {
                             size = Image.Size.Size4096
-                            format = if (avatar.animated) Image.Format.GIF else Image.Format.PNG
+                            format = if (avatar.isAnimated) Image.Format.GIF else Image.Format.PNG
                         }
                         timestamp = Clock.System.now()
                     }
