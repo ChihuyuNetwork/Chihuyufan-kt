@@ -263,42 +263,49 @@ fun main() = runBlocking {
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
-                channels.forEach channel@{ channel ->
+                val threads = interaction.guild.cachedThreads.toList()
 
-                    suspend fun countMessages(targetChannel: GuildMessageChannel) {
-                        val messages = targetChannel.messages.toList()
-                        messages.forEachIndexed message@{ index, message ->
-                            val author = message.author ?: return@message
-                            if (author.isBot) return@message
-                            messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                            println("Counting ${channel.name}: $index/${messages.lastIndex}")
-                        }
+                suspend fun countMessages(targetChannel: GuildMessageChannel) {
+                    val messages = targetChannel.messages.toList()
+                    messages.forEachIndexed message@{ index, message ->
+                        val author = message.author ?: return@message
+                        if (author.isBot) return@message
+                        messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
+                        println("Counting ${targetChannel.name}: $index/${messages.lastIndex}")
                     }
+                }
+
+                channels.forEach channel@{ channel ->
 
                     if (channel is ForumChannel) {
                         channel.activeThreads.toList().forEach {
                             countMessages(it)
                         }
-                    } else {
-                        val textChannel = channel as? TextChannel ?: return@channel
-                        countMessages(textChannel)
-
-                        val threads = textChannel.activeThreads.toList()
-                        if (threads.isNotEmpty()) {
-                            threads.forEach {
-                                countMessages(it)
-                            }
-                        }
+                    } else if (channel is TextChannel) {
+                        countMessages(channel)
                     }
 
                     msg.edit {
                         content = """
                             メッセージをカウント中・・・
 
-                            ${channels.indexOf(channel)}/${channels.size}チャンネルが集計完了しました
+                            ${channels.indexOf(channel)}/${channels.size + threads.size}チャンネルが集計完了しました
                         """.trimIndent()
                     }
                 }
+
+                threads.forEach thread@{ thread ->
+                    countMessages(thread)
+
+                    msg.edit {
+                        content = """
+                            メッセージをカウント中・・・
+
+                            ${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}チャンネルが集計完了しました
+                        """.trimIndent()
+                    }
+                }
+
                 msg.edit {
                     content = "最新メッセージランキング\n"
                     messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
