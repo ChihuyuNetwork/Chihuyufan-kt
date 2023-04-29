@@ -258,12 +258,16 @@ fun main() = runBlocking {
             }
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
-                    content = "メッセージをカウント中・・・"
+                    content = "チャンネルをカウント中・・・"
                 }.message
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
-                val threads = interaction.guild.cachedThreads.toList()
+                val threads = channels.flatMap {
+                    ((it as? TextChannel)?.activeThreads?.toList()?.toMutableList() ?: mutableListOf()) +
+                            ((it as? TextChannel)?.getPublicArchivedThreads()?.toList()?.toMutableList() ?: mutableListOf()) +
+                            ((it as? TextChannel)?.getPrivateArchivedThreads()?.toList()?.toMutableList() ?: mutableListOf())
+                }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
                     val messages = targetChannel.messages.toList()
