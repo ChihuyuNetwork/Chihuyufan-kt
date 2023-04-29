@@ -15,9 +15,11 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.cache.data.RemovedReactionData
 import dev.kord.core.entity.ReactionEmoji
+import dev.kord.core.entity.channel.ForumChannel
+import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.core.entity.channel.thread.ThreadChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.exception.EntityNotFoundException
@@ -26,6 +28,7 @@ import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
+import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
 import kotlinx.coroutines.flow.count
@@ -201,7 +204,7 @@ fun main() = runBlocking {
                 choice("Maximum", "maxresdefault")
             }
         }
-        input("valorant-spread", "Spread members play valorant for custom mode")
+        input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
     }
 
@@ -244,29 +247,55 @@ fun main() = runBlocking {
             }
             "valorant-spread" -> {
                 val msg = interaction.deferPublicResponse().respond {
-                    content = "カスタムに参加したい人はリアクションを押してください"
+                    content = "カスタム参加者は✅を押してください"
                     actionRow {
                         interactionButton(ButtonStyle.Primary, "valorantspread") {
-                            label = "Spread!"
+                            label = "割り振る"
                         }
                     }
-                }.message
+                }
 
-                msg.addReaction(ReactionEmoji.Companion.from(RemovedReactionData(name = "white_check_mark")))
+                msg.message.addReaction(ReactionEmoji.Unicode("✅"))
             }
             "message-ranking" -> {
-                interaction.deferPublicResponse().respond {
-                    content = "最新！ちふゆ鯖メッセージランキング"
-                    val messageCountMap = mutableMapOf<Snowflake, Int>()
-                    repeat(interaction.guild.members.toList().size) {
-                        interaction.guild.fetchGuild().channels.toList().forEach { channel ->
-                            (channel.fetchChannel() as? TextChannel ?: return@forEach).messages.toList().forEach { message ->
-                                messageCountMap[message.fetchMessage().author!!.id] = (messageCountMap[message.fetchMessage().author!!.id] ?: 0).inc()
-                            }
+                val msg = interaction.deferPublicResponse().respond {
+                    content = "メッセージをカウント中・・・"
+                }.message
+
+                val messageCountMap = mutableMapOf<Snowflake, Int>()
+                val channels = interaction.guild.channels.toList()
+                channels.forEach channel@{ channel ->
+
+                    suspend fun countMessages(targetChannel: GuildMessageChannel) {
+                        val messages = targetChannel.messages.toList()
+                        messages.forEachIndexed message@{ index, message ->
+                            val author = message.author ?: return@message
+                            if (author.isBot) return@message
+                            messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
+                            println("$index/${messages.lastIndex}")
                         }
                     }
+
+                    if (channel is ForumChannel) {
+                        channel.activeThreads.toList().forEach {
+                            countMessages(it)
+                        }
+                    } else {
+                        countMessages(channel as? TextChannel ?: channel as? ThreadChannel ?: return@channel)
+                    }
+
+                    msg.edit {
+                        content = """
+                            メッセージをカウント中・・・
+
+                            ${channels.indexOf(channel)}/${channels.size}チャンネルが集計完了しました
+                        """.trimIndent()
+                    }
+                }
+                msg.edit {
+                    content = "最新メッセージランキング\n"
                     messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
-                        content += "\n${index.inc()}. ${
+                        content += "\n\\${index.inc()}. ${
                             try {
                                 interaction.guild.getMember(pair.first).displayName
                             } catch (e: EntityNotFoundException) {
@@ -481,12 +510,24 @@ fun main() = runBlocking {
         when (val id = interaction.componentId) {
             "valorantspread" -> {
                 interaction.deferPublicResponse().respond {
-                    println("start shuffling...")
-                    val reactors = interaction.message.fetchMessage().getReactors(ReactionEmoji.Companion.from(RemovedReactionData(null, "white_check_mark")))
-                    println(reactors.count())
-                    val teams = reactors.toList().shuffled().chunked(reactors.count() / 2)
-                    println(teams)
-                    content = "`Attacker`\n ```${teams[0].joinToString("\n")}```\n`Defender`\n ```${teams[1].joinToString("\n")}```"
+                    val reactors = interaction.message.getReactors(ReactionEmoji.Unicode("✅"))
+                    val teams = reactors.toList().shuffled().minus(kord.getSelf()).map { it.mention }.chunked(reactors.count() / 2)
+                    embeds = mutableListOf(
+                        if (teams.size < 2)
+                            EmbedBuilder()
+                                .apply {
+                                    title = "人数が足りません"
+                                    timestamp = Clock.System.now()
+                                }
+                        else
+                            EmbedBuilder()
+                                .apply {
+                                    title = "チーム割り振り結果"
+                                    field("アタッカーサイド", false) { teams[0].joinToString("\n") }
+                                    field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
+                                    timestamp = Clock.System.now()
+                                }
+                    )
                 }
             }
             else -> when (val splid = id.split("-")[0]) {
