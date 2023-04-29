@@ -258,7 +258,7 @@ fun main() = runBlocking {
             }
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
-                    content = "チャンネルをカウント中・・・"
+                    content = "チャンネル/スレッドをカウント中・・・"
                 }.message
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
@@ -293,7 +293,7 @@ fun main() = runBlocking {
                         content = """
                             メッセージをカウント中・・・
 
-                            ${channels.indexOf(channel)}/${channels.size + threads.size}チャンネルが集計完了しました
+                            ${channels.indexOf(channel)}/${channels.size + threads.size}チャンネル/スレッドが集計完了しました
                         """.trimIndent()
                     }
                 }
@@ -305,7 +305,7 @@ fun main() = runBlocking {
                         content = """
                             メッセージをカウント中・・・
 
-                            ${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}チャンネルが集計完了しました
+                            ${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}チャンネル/スレッドが集計完了しました
                         """.trimIndent()
                     }
                 }
