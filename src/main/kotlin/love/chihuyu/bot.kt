@@ -295,13 +295,12 @@ fun main() = runBlocking {
                 msg.edit {
                     content = "最新メッセージランキング\n"
                     messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
-                        content += "\n\\${index.inc()}. ${
+                        content += "\n**${index.inc()}**. `${
                         try {
                             interaction.guild.getMember(pair.first).displayName
                         } catch (e: EntityNotFoundException) {
                             kord.getUser(pair.first)?.username ?: "Deleted User"
-                        }
-                        } (${pair.second}メッセージ)"
+                        }}` (${pair.second}メッセージ)"
                     }
                 }
             }
