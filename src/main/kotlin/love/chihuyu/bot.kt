@@ -19,7 +19,6 @@ import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
-import dev.kord.core.entity.channel.thread.ThreadChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.exception.EntityNotFoundException
@@ -281,7 +280,15 @@ fun main() = runBlocking {
                             countMessages(it)
                         }
                     } else {
-                        countMessages(channel as? TextChannel ?: channel as? ThreadChannel ?: return@channel)
+                        val textChannel = channel as? TextChannel ?: return@channel
+                        countMessages(textChannel)
+
+                        val threads = textChannel.activeThreads.toList()
+                        if (threads.isNotEmpty()) {
+                            threads.forEach {
+                                countMessages(it)
+                            }
+                        }
                     }
 
                     msg.edit {
