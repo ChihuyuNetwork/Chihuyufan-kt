@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.8.20"
+    kotlin("jvm") version "1.8.21"
     id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("org.jlleitschuh.gradle.ktlint") version "11.3.1"
+    id("org.jlleitschuh.gradle.ktlint") version "11.3.2"
 }
 
 group = "love.chihuyu"
@@ -18,8 +18,8 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.20.0")
     implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
-    implementation("dev.kord:kord-core:0.8.3")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.2.1"))
+    implementation("dev.kord:kord-core:0.9.0")
+    implementation(platform("com.aallam.openai:openai-client-bom:3.2.2"))
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
