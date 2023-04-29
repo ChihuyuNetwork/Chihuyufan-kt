@@ -2,7 +2,7 @@ package love.chihuyu.database
 
 import org.jetbrains.exposed.dao.id.IntIdTable
 
-object BoketsuPoints: IntIdTable("boketsu") {
+object BoketsuPoints : IntIdTable("boketsu") {
     val snowflake = ulong("snowflake")
     val point = long("point")
 

@@ -34,7 +34,7 @@ object OperationResponder {
                 }
             } catch (e: Throwable) {
                 "Error encountered!\n```${
-                    e.message + "\n" + e.stackTrace.joinToString("\n")
+                e.message + "\n" + e.stackTrace.joinToString("\n")
                 }```"
             }
         }
@@ -72,7 +72,7 @@ object OperationResponder {
                 }
             } catch (e: Throwable) {
                 "Error encountered!\n```${
-                    e.message + "\n" + e.stackTrace.joinToString("\n")
+                e.message + "\n" + e.stackTrace.joinToString("\n")
                 }```"
             }
         }

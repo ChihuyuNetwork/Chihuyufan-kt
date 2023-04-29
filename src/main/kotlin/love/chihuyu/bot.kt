@@ -296,11 +296,11 @@ fun main() = runBlocking {
                     content = "最新メッセージランキング\n"
                     messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
                         content += "\n\\${index.inc()}. ${
-                            try {
-                                interaction.guild.getMember(pair.first).displayName
-                            } catch (e: EntityNotFoundException) {
-                                kord.getUser(pair.first)?.username ?: "Deleted User"
-                            }
+                        try {
+                            interaction.guild.getMember(pair.first).displayName
+                        } catch (e: EntityNotFoundException) {
+                            kord.getUser(pair.first)?.username ?: "Deleted User"
+                        }
                         } (${pair.second}メッセージ)"
                     }
                 }
@@ -311,13 +311,13 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             content = pteroClient.retrieveServers().joinToString("\n") {
                                 "${
-                                    when (it.retrieveUtilization().execute().state) {
-                                        UtilizationState.STARTING -> "⬆️"
-                                        UtilizationState.STOPPING -> "⬇️"
-                                        UtilizationState.RUNNING -> "\uD83D\uDFE9"
-                                        UtilizationState.OFFLINE -> "\uD83D\uDFE5"
-                                        else -> "\uD83D\uDFE5"
-                                    }
+                                when (it.retrieveUtilization().execute().state) {
+                                    UtilizationState.STARTING -> "⬆️"
+                                    UtilizationState.STOPPING -> "⬇️"
+                                    UtilizationState.RUNNING -> "\uD83D\uDFE9"
+                                    UtilizationState.OFFLINE -> "\uD83D\uDFE5"
+                                    else -> "\uD83D\uDFE5"
+                                }
                                 } " + "`${it.description}`: `${it.name}`"
                             }
                         }
@@ -402,8 +402,10 @@ fun main() = runBlocking {
                                 color = Color(100, 255, 100)
                                 pteroApplication.retrieveServers().execute().forEach {
                                     val backups = pteroClient.retrieveServerByIdentifier(it.identifier).execute().retrieveBackups().execute()
-                                    if (backups.isNotEmpty()) field(it.name, false) {
-                                        backups.joinToString("\n") { backup -> "${backup.name} | ${"%.2f".format(backup.size / 1024.0 / 1024.0 / 1024.0)}GB" }
+                                    if (backups.isNotEmpty()) {
+                                        field(it.name, false) {
+                                            backups.joinToString("\n") { backup -> "${backup.name} | ${"%.2f".format(backup.size / 1024.0 / 1024.0 / 1024.0)}GB" }
+                                        }
                                     }
                                 }
                             }
@@ -422,7 +424,7 @@ fun main() = runBlocking {
                     "reply" -> {
                         interaction.deferPublicResponse().respond {
                             chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
-                            content = ChatGPTBridger.chat(openai, interaction,command)
+                            content = ChatGPTBridger.chat(openai, interaction, command)
                         }
                     }
                     "image" -> {
@@ -443,15 +445,19 @@ fun main() = runBlocking {
                     val mode = interaction.command.strings["mode"]!!
                     embed {
                         val id = "https://img.youtube.com/vi/${
-                            if ("https://" in target) {
-                                if ("youtu.be" in target) {
-                                    target.substringAfter("be/").substringBefore('&')
-                                } else if ("v=" in target) {
-                                    target.substringAfter("v=").substringBefore('&')
-                                } else if ("shorts" in target) {
-                                    target.substringAfter("shorts/").substringBefore('&')
-                                } else target
-                            } else target
+                        if ("https://" in target) {
+                            if ("youtu.be" in target) {
+                                target.substringAfter("be/").substringBefore('&')
+                            } else if ("v=" in target) {
+                                target.substringAfter("v=").substringBefore('&')
+                            } else if ("shorts" in target) {
+                                target.substringAfter("shorts/").substringBefore('&')
+                            } else {
+                                target
+                            }
+                        } else {
+                            target
+                        }
                         }/$mode.jpg"
                         timestamp = Clock.System.now()
                         image = id
@@ -513,13 +519,13 @@ fun main() = runBlocking {
                     val reactors = interaction.message.getReactors(ReactionEmoji.Unicode("✅"))
                     val teams = reactors.toList().shuffled().minus(kord.getSelf()).map { it.mention }.chunked(reactors.count() / 2)
                     embeds = mutableListOf(
-                        if (teams.size < 2)
+                        if (teams.size < 2) {
                             EmbedBuilder()
                                 .apply {
                                     title = "人数が足りません"
                                     timestamp = Clock.System.now()
                                 }
-                        else
+                        } else {
                             EmbedBuilder()
                                 .apply {
                                     title = "チーム割り振り結果"
@@ -527,6 +533,7 @@ fun main() = runBlocking {
                                     field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
                                     timestamp = Clock.System.now()
                                 }
+                        }
                     )
                 }
             }
