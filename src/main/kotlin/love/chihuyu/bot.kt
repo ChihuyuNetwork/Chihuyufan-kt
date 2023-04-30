@@ -21,7 +21,6 @@ import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
-import dev.kord.core.exception.EntityNotFoundException
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
@@ -314,11 +313,8 @@ fun main() = runBlocking {
                     content = "最新メッセージランキング\n"
                     messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
                         content += "\n**${index.inc()}**. `${
-                        try {
-                            interaction.guild.getMember(pair.first).displayName
-                        } catch (e: EntityNotFoundException) {
-                            kord.getUser(pair.first)?.username ?: "Deleted User"
-                        }}` (${pair.second}メッセージ)"
+                            interaction.guild.getMemberOrNull(pair.first)?.displayName ?: kord.getUser(pair.first)?.username ?: "Deleted User"
+                        }` (${pair.second}メッセージ)"
                     }
                 }
             }
