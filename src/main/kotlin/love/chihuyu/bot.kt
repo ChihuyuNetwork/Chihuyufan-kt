@@ -29,6 +29,7 @@ import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
+import kotlinx.coroutines.flow.collectIndexed
 import kotlinx.coroutines.flow.count
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -269,17 +270,18 @@ fun main() = runBlocking {
                 }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
-                    val messages = targetChannel.messages.toList()
-                    messages.forEachIndexed message@{ index, message ->
+                    val messages = targetChannel.messages
+                    val messagesSize = targetChannel.messages.count()
+                    val name = targetChannel.name
+                    messages.collectIndexed message@{ index, message ->
                         val author = message.author ?: return@message
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        println("Counting ${targetChannel.name}: $index/${messages.lastIndex}")
+                        print("Counting $name: ${index.inc()}/${messagesSize}")
                     }
                 }
 
                 channels.forEach channel@{ channel ->
-
                     if (channel is ForumChannel) {
                         channel.activeThreads.toList().forEach {
                             countMessages(it)
