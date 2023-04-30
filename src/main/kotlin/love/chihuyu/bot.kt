@@ -277,7 +277,7 @@ fun main() = runBlocking {
                         val author = message.author ?: return@message
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        print("Counting $name: ${index.inc()}/${messagesSize}")
+                        println("Counting $name: ${index.inc()}/${messagesSize}")
                     }
                 }
 
