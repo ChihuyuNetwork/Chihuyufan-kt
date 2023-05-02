@@ -262,9 +262,9 @@ fun main() = runBlocking {
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
-                val activeThreads = channels.map { (it as? TextChannel)?.activeThreads }
-                val privateThreads = channels.map { (it as? TextChannel)?.getPrivateArchivedThreads() }
-                val publicThreads = channels.map { (it as? TextChannel)?.getPublicArchivedThreads() }
+                val activeThreads = channels.flatMap { (it as? TextChannel)?.activeThreads?.toList() ?: emptyList() }
+                val privateThreads = channels.flatMap { (it as? TextChannel)?.getPrivateArchivedThreads()?.toList() ?: emptyList() }
+                val publicThreads = channels.flatMap { (it as? TextChannel)?.getPublicArchivedThreads()?.toList() ?: emptyList() }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
                     val messages = targetChannel.messages.withIndex()
@@ -286,16 +286,16 @@ fun main() = runBlocking {
                     }
                 }
 
-                activeThreads.forEach thread@{ threads ->
-                    threads?.onEach { countMessages(it) }
+                activeThreads.forEach thread@{
+                    countMessages(it)
                 }
 
-                privateThreads.forEach thread@{ threads ->
-                    threads?.onEach { countMessages(it) }
+                privateThreads.forEach thread@{
+                    countMessages(it)
                 }
 
-                publicThreads.forEach thread@{ threads ->
-                    threads?.onEach { countMessages(it) }
+                publicThreads.forEach thread@{
+                    countMessages(it)
                 }
 
                 msg.edit {
