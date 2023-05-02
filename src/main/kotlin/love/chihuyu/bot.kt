@@ -278,6 +278,10 @@ fun main() = runBlocking {
                     }.collect()
                 }
 
+                msg.edit {
+                    content = "メッセージを集計中・・・"
+                }
+
                 channels.forEach channel@{ channel ->
                     if (channel is ForumChannel) {
                         channel.activeThreads.onEach { countMessages(it) }
