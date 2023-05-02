@@ -15,6 +15,7 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.behavior.reply
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
@@ -29,9 +30,7 @@ import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
-import kotlinx.coroutines.flow.collectIndexed
-import kotlinx.coroutines.flow.count
-import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import love.chihuyu.database.BoketsuPoint
@@ -263,60 +262,53 @@ fun main() = runBlocking {
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
-                val threads = channels.flatMap {
-                    ((it as? TextChannel)?.activeThreads?.toList()?.toMutableList() ?: mutableListOf()) +
-                            ((it as? TextChannel)?.getPublicArchivedThreads()?.toList()?.toMutableList() ?: mutableListOf()) +
-                            ((it as? TextChannel)?.getPrivateArchivedThreads()?.toList()?.toMutableList() ?: mutableListOf())
-                }
+                val activeThreads = channels.map { (it as? TextChannel)?.activeThreads }
+                val privateThreads = channels.map { (it as? TextChannel)?.getPrivateArchivedThreads() }
+                val publicThreads = channels.map { (it as? TextChannel)?.getPublicArchivedThreads() }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
-                    val messages = targetChannel.messages
+                    val messages = targetChannel.messages.withIndex()
                     val messagesSize = targetChannel.messages.count()
                     val name = targetChannel.name
-                    messages.collectIndexed message@{ index, message ->
-                        val author = message.author ?: return@message
+                    messages.onEach message@{ message ->
+                        val author = message.value.author ?: return@message
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        println("Counting $name: ${index.inc()}/${messagesSize}")
-                    }
+                        println("Counting $name: ${message.index}/${messagesSize}")
+                    }.collect()
                 }
 
                 channels.forEach channel@{ channel ->
                     if (channel is ForumChannel) {
-                        channel.activeThreads.toList().forEach {
-                            countMessages(it)
-                        }
+                        channel.activeThreads.onEach { countMessages(it) }
                     } else if (channel is TextChannel) {
                         countMessages(channel)
                     }
-
-                    msg.edit {
-                        content = """
-                            メッセージをカウント中・・・
-
-                            `${channels.indexOf(channel)}/${channels.size + threads.size}`チャンネル/スレッドが集計完了しました
-                        """.trimIndent()
-                    }
                 }
 
-                threads.forEach thread@{ thread ->
-                    countMessages(thread)
+                activeThreads.forEach thread@{ threads ->
+                    threads?.onEach { countMessages(it) }
+                }
 
-                    msg.edit {
-                        content = """
-                            メッセージをカウント中・・・
+                privateThreads.forEach thread@{ threads ->
+                    threads?.onEach { countMessages(it) }
+                }
 
-                            `${threads.indexOf(thread) + channels.size}/${channels.size + threads.size}`チャンネル/スレッドが集計完了しました
-                        """.trimIndent()
-                    }
+                publicThreads.forEach thread@{ threads ->
+                    threads?.onEach { countMessages(it) }
                 }
 
                 msg.edit {
-                    content = "最新メッセージランキング\n"
-                    messageCountMap.toList().sortedByDescending { it.second }.forEachIndexed { index, pair ->
-                        content += "\n**${index.inc()}**. `${
-                            interaction.guild.getMemberOrNull(pair.first)?.displayName ?: kord.getUser(pair.first)?.username ?: "Deleted User"
-                        }` (${pair.second}メッセージ)"
+                    content = "集計が完了しました！"
+                }
+
+                val chunked = messageCountMap.toList().chunked(20)
+                chunked.forEach { mapList ->
+                    msg.reply {
+                        content = "メッセージランキング ${chunked.indexOf(mapList).inc()}/${chunked.size}"
+                        mapList.forEach { usr ->
+                            content += "\n**${messageCountMap.toList().indexOf(usr)}.** ${interaction.guild.getMemberOrNull(usr.first) ?: kord.getUser(usr.first) ?: "Deleted User"} (${usr.second}msg)"
+                        }
                     }
                 }
             }
