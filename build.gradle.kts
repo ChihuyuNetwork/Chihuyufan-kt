@@ -19,7 +19,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
     implementation("dev.kord:kord-core:0.9.0")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.2.2"))
+    implementation(platform("com.aallam.openai:openai-client-bom:3.2.3"))
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
