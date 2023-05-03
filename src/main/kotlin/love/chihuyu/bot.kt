@@ -539,9 +539,10 @@ fun main() = runBlocking {
                                     timestamp = Clock.System.now()
                                 }
                         } else {
+                            val maps = mutableListOf("アイスボックス", "アセント", "スプリット", "パール", "バインド", "フラクチャー", "ブリーズ", "ヘイヴン", "ロータス")
                             EmbedBuilder()
                                 .apply {
-                                    title = "チーム割り振り結果"
+                                    title = "チーム割り振り結果 | ${maps.random()}"
                                     field("アタッカーサイド", false) { teams[0].joinToString("\n") }
                                     field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
                                     timestamp = Clock.System.now()
