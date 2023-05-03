@@ -243,7 +243,7 @@ fun main() = runBlocking {
                     }
                 }
             }
-            "valorant-spread" -> {
+            "valorant-custom" -> {
                 val msg = interaction.deferPublicResponse().respond {
                     content = "カスタム参加者は✅を押してください"
                     actionRow {
