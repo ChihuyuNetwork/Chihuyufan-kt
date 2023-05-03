@@ -15,7 +15,6 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.behavior.reply
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
@@ -30,6 +29,7 @@ import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.EmbedBuilder
 import dev.kord.rest.builder.message.modify.actionRow
 import dev.kord.rest.builder.message.modify.embed
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -49,7 +49,7 @@ import java.io.File
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-@OptIn(BetaOpenAI::class)
+@OptIn(BetaOpenAI::class, FlowPreview::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
@@ -268,13 +268,13 @@ fun main() = runBlocking {
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
                     val messages = targetChannel.messages.withIndex()
-                    val messagesSize = targetChannel.messages.count()
+                    val messagesSize = messages.count()
                     val name = targetChannel.name
                     messages.onEach message@{ message ->
                         val author = message.value.author ?: return@message
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        if (message.index == 0) print("Counting $name: 0/${messagesSize}") else println("Counting $name: ${message.index.inc()}/${messagesSize}")
+                        println("Counting $name: ${message.index.inc()}/${messagesSize}")
                     }.collect()
                 }
 
@@ -303,16 +303,18 @@ fun main() = runBlocking {
                 }
 
                 msg.edit {
-                    content = "集計が完了しました！"
+                    content = """
+                        メッセージランキング
+                        
+                        """.trimIndent()
                 }
 
-                val chunked = messageCountMap.toList().chunked(20)
-                chunked.forEach { mapList ->
-                    msg.reply {
-                        content = "メッセージランキング ${chunked.indexOf(mapList).inc()}/${chunked.size}"
-                        mapList.forEach { usr ->
-                            content += "\n**${messageCountMap.toList().indexOf(usr)}.** ${interaction.guild.getMemberOrNull(usr.first) ?: kord.getUser(usr.first) ?: "Deleted User"} (${usr.second}msg)"
-                        }
+                val chunked = messageCountMap.toList().sortedByDescending { it.second }
+                var oldContent = msg.content
+                chunked.forEach {
+                    msg.edit {
+                        content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.displayName ?: kord.getUser(it.first)?.username ?: "Deleted User"}` / ${it.second}msg"
+                        oldContent = content ?: ""
                     }
                 }
             }
