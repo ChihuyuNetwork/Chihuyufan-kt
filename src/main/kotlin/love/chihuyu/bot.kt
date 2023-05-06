@@ -551,10 +551,10 @@ fun main() = runBlocking {
                         return@on
                     }
                     interaction.deferPublicResponse().respond {
-                        val joined = interaction.message.mentionedUsers.toList()
-                        val teams = joined.shuffled().minus(kord.getSelf()).map { it.mention }.chunked(joined.size.inc() / 2)
+                        val joined = interaction.message.mentionedUsers.toList().map { it.mention }
+                        val teams = joined.shuffled().minus(kord.getSelf().mention).partition { (joined.indexOf(it) % 2) == 0 }
                         embeds = mutableListOf(
-                            if (teams.size < 2) {
+                            if (joined.size < 2) {
                                 EmbedBuilder()
                                     .apply {
                                         title = "人数が足りません"
@@ -566,8 +566,8 @@ fun main() = runBlocking {
                                     .apply {
                                         title = "チーム割り振り結果"
                                         field("マップ", false) { maps.random() }
-                                        field("アタッカーサイド", false) { teams[0].joinToString("\n") }
-                                        field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
+                                        field("アタッカーサイド", false) { teams.first.joinToString("\n") }
+                                        field("ディフェンダーサイド", false) { teams.second.joinToString("\n") }
                                         timestamp = Clock.System.now()
                                     }
                             }
