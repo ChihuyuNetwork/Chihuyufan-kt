@@ -15,7 +15,6 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
-import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
@@ -244,16 +243,18 @@ fun main() = runBlocking {
                 }
             }
             "valorant-custom" -> {
-                val msg = interaction.deferPublicResponse().respond {
-                    content = "カスタム参加者は✅を押してください"
+                interaction.deferPublicResponse().respond {
+                    content = "カスタム参加者は参加ボタンを押してください"
                     actionRow {
-                        interactionButton(ButtonStyle.Primary, "valorantspread") {
+                        interactionButton(ButtonStyle.Primary, "valorantcustomjoin") {
+                            label = "参加する"
+                        }
+
+                        interactionButton(ButtonStyle.Primary, "valorantcustomspread-${interaction.user.id.value}") {
                             label = "割り振る"
                         }
                     }
                 }
-
-                msg.message.addReaction(ReactionEmoji.Unicode("✅"))
             }
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
@@ -527,31 +528,52 @@ fun main() = runBlocking {
 
     kord.on<GuildButtonInteractionCreateEvent> {
         when (val id = interaction.componentId) {
-            "valorantspread" -> {
-                interaction.deferPublicResponse().respond {
-                    val reactors = interaction.message.getReactors(ReactionEmoji.Unicode("✅"))
-                    val teams = reactors.toList().shuffled().minus(kord.getSelf()).map { it.mention }.chunked(reactors.count() / 2)
-                    embeds = mutableListOf(
-                        if (teams.size < 2) {
-                            EmbedBuilder()
-                                .apply {
-                                    title = "人数が足りません"
-                                    timestamp = Clock.System.now()
-                                }
-                        } else {
-                            val maps = mutableListOf("アイスボックス", "アセント", "スプリット", "パール", "バインド", "フラクチャー", "ブリーズ", "ヘイヴン", "ロータス")
-                            EmbedBuilder()
-                                .apply {
-                                    title = "チーム割り振り結果 | ${maps.random()}"
-                                    field("アタッカーサイド", false) { teams[0].joinToString("\n") }
-                                    field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
-                                    timestamp = Clock.System.now()
-                                }
-                        }
-                    )
+            "valorantcustomjoin" -> {
+                val joinedMembers = interaction.message.mentionedUsers.map { it.id }.toSet()
+                val newMembers = joinedMembers.plus(interaction.user.id).map { interaction.guild.getMember(it).mention }.joinToString(" ")
+                interaction.deferPublicMessageUpdate().edit {
+                    interaction.message.edit {
+                        content = """
+                        カスタム参加者は参加ボタンを押してください
+                        
+                        参加者一覧
+                        $newMembers
+                        """.trimIndent()
+                    }
                 }
             }
             else -> when (val splid = id.split("-")[0]) {
+                "valorantcustomspread" -> {
+                    if (interaction.user.id.value != id.split("-")[1].toULong()) {
+                        interaction.deferEphemeralResponse().respond {
+                            content = "コマンドを実行した人しか割り振りできません"
+                        }
+                        return@on
+                    }
+                    interaction.deferPublicResponse().respond {
+                        val joined = interaction.message.mentionedUsers.toList()
+                        val teams = joined.shuffled().minus(kord.getSelf()).map { it.mention }.chunked(joined.size.inc() / 2)
+                        embeds = mutableListOf(
+                            if (teams.size < 2) {
+                                EmbedBuilder()
+                                    .apply {
+                                        title = "人数が足りません"
+                                        timestamp = Clock.System.now()
+                                    }
+                            } else {
+                                val maps = mutableListOf("アイスボックス", "アセント", "スプリット", "パール", "バインド", "フラクチャー", "ブリーズ", "ヘイヴン", "ロータス")
+                                EmbedBuilder()
+                                    .apply {
+                                        title = "チーム割り振り結果"
+                                        field("マップ", false) { maps.random() }
+                                        field("アタッカーサイド", false) { teams[0].joinToString("\n") }
+                                        field("ディフェンダーサイド", false) { teams[1].joinToString("\n") }
+                                        timestamp = Clock.System.now()
+                                    }
+                            }
+                        )
+                    }
+                }
                 "refreshstatusserver" -> {
                     interaction.deferPublicMessageUpdate().edit {
                         interaction.message.edit {
