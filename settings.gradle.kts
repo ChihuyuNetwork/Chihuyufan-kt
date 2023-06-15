@@ -1,2 +1,2 @@
 
-rootProject.name = "Chihuyufan-kt"
+rootProject.name = "chihuyufan-kt"

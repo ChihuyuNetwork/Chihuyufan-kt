@@ -8,6 +8,8 @@ import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
+import dev.kord.common.annotation.KordExperimental
+import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
@@ -23,6 +25,7 @@ import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEve
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
+import dev.kord.gateway.RequestGuildMembers
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.EmbedBuilder
@@ -48,7 +51,7 @@ import java.io.File
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-@OptIn(BetaOpenAI::class, FlowPreview::class)
+@OptIn(BetaOpenAI::class, FlowPreview::class, KordExperimental::class, KordUnsafe::class, PrivilegedIntent::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
@@ -203,6 +206,7 @@ fun main() = runBlocking {
         }
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
+        input("id-sorted-members", "Show members sorted by their id")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -240,6 +244,11 @@ fun main() = runBlocking {
                         }
                         timestamp = Clock.System.now()
                     }
+                }
+            }
+            "id-sorted-members" -> {
+                interaction.deferEphemeralResponse().respond {
+                    content = interaction.guild.requestMembers(RequestGuildMembers(Snowflake(928978742825586708))).toList().flatMap { it.members }.filterNot { it.isBot }.sortedBy { it.id.value }.joinToString("\n") { "${it.mention} (${it.id.value})" }
                 }
             }
             "valorant-custom" -> {
