@@ -29,7 +29,6 @@ import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEve
 import dev.kord.core.on
 import dev.kord.gateway.Intent
 import dev.kord.gateway.PrivilegedIntent
-import dev.kord.gateway.RequestGuildMembers
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.EmbedBuilder
@@ -158,8 +157,8 @@ fun main() = runBlocking {
             }
             subCommand("backups", "List all server's backups")
         }
-        input("chatgpt", "Use CahtGPT API") {
-            subCommand("new", "Start new session with ChatGPT") {
+        input("gpt", "Use CahtGPT API") {
+            subCommand("chat", "Start new session with ChatGPT") {
                 string("text", "Text message to send to chatgpt") {
                     required = true
                 }
@@ -209,7 +208,6 @@ fun main() = runBlocking {
         }
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
-        input("id-sorted-members", "Show members sorted by their id")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -249,11 +247,6 @@ fun main() = runBlocking {
                     }
                 }
             }
-            "id-sorted-members" -> {
-                interaction.deferEphemeralResponse().respond {
-                    content = interaction.guild.requestMembers(RequestGuildMembers(Snowflake(928978742825586708))).toList().flatMap { it.members }.filterNot { it.isBot }.sortedBy { it.id.value }.joinToString("\n") { "${it.mention} (${it.id.value})" }
-                }
-            }
             "valorant-custom" -> {
                 interaction.deferPublicResponse().respond {
                     content = "カスタム参加者は参加ボタンを押してください"
@@ -271,7 +264,7 @@ fun main() = runBlocking {
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
                     content = "チャンネル/スレッドをカウント中・・・"
-                }.message
+                }
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
@@ -323,7 +316,7 @@ fun main() = runBlocking {
                 }
 
                 val chunked = messageCountMap.toList().sortedByDescending { it.second }
-                var oldContent = msg.content
+                var oldContent = msg.message.content
                 chunked.forEach {
                     msg.edit {
                         content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.displayName ?: kord.getUser(it.first)?.username ?: "Deleted User"}` / ${it.second}msg"
@@ -439,7 +432,7 @@ fun main() = runBlocking {
                     }
                 }
             }
-            "chatgpt" -> {
+            "gpt" -> {
                 suspend fun chat() {
                     val msg = interaction.deferPublicResponse().respond {
                         content = "はわわ・・・"
@@ -475,7 +468,7 @@ fun main() = runBlocking {
                 }
 
                 when (command.data.options.value?.get(0)?.name) {
-                    "new" -> {
+                    "chat" -> {
                         chatCache[interaction.user.id.value] = mutableListOf()
                         chat()
                     }
