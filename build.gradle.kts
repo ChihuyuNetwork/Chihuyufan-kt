@@ -19,6 +19,8 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
     implementation("dev.kord:kord-core:0.9.0")
+    implementation("dev.kord:kord-common:0.9.0")
+    implementation("dev.kord:kord-rest:0.9.0")
     implementation(platform("com.aallam.openai:openai-client-bom:3.2.5"))
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
@@ -27,7 +29,7 @@ dependencies {
     implementation("org.jetbrains.exposed:exposed-core:0.41.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
-    implementation(kotlin("stdlib-jdk8"))
+    implementation(kotlin("stdlib"))
 }
 
 ktlint {

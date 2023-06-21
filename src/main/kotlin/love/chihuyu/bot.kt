@@ -1,7 +1,11 @@
 package love.chihuyu
 
 import com.aallam.openai.api.BetaOpenAI
+import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
+import com.aallam.openai.api.chat.ChatRole
+import com.aallam.openai.api.image.ImageCreation
+import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
@@ -40,7 +44,6 @@ import love.chihuyu.database.BoketsuPoints
 import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
-import love.chihuyu.util.ChatGPTBridger
 import love.chihuyu.util.MemberUtils.checkInfraPermission
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
@@ -437,22 +440,52 @@ fun main() = runBlocking {
                 }
             }
             "chatgpt" -> {
+                suspend fun chat() {
+                    val msg = interaction.deferPublicResponse().respond {
+                        content = "はわわ・・・"
+                    }
+
+                    chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.User, command.strings["text"]!!)
+                    val completion = openai.chatCompletions(
+                        ChatCompletionRequest(
+                            ModelId(command.strings["model"] ?: "gpt-3.5-turbo"),
+                            chatCache[interaction.user.id.value]!!,
+                            temperature = command.numbers["temperature"],
+                            maxTokens = command.integers["max_tokens"]?.toInt()
+                        )
+                    )
+
+                    var tempContent = ""
+                    var tempCount = 0
+
+                    completion.collect { chunk ->
+                        tempContent += chunk.choices[0].delta?.content ?: return@collect
+                        if (tempContent.isNotEmpty() && tempCount % 16 == 0) {
+                            msg.edit {
+                                content = tempContent
+                            }
+                        }
+                        tempCount += 1
+                    }.also {
+                        msg.edit {
+                            content = tempContent
+                        }
+                        chatCache[interaction.user.id.value]!! += ChatMessage(ChatRole.Assistant, tempContent)
+                    }
+                }
+
                 when (command.data.options.value?.get(0)?.name) {
                     "new" -> {
-                        interaction.deferPublicResponse().respond {
-                            chatCache[interaction.user.id.value] = mutableListOf()
-                            content = ChatGPTBridger.chat(openai, interaction, command)
-                        }
+                        chatCache[interaction.user.id.value] = mutableListOf()
+                        chat()
                     }
                     "reply" -> {
-                        interaction.deferPublicResponse().respond {
-                            chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
-                            content = ChatGPTBridger.chat(openai, interaction, command)
-                        }
+                        chatCache.putIfAbsent(interaction.user.id.value, mutableListOf())
+                        chat()
                     }
                     "image" -> {
                         interaction.deferPublicResponse().respond {
-                            content = ChatGPTBridger.image(openai, command)
+                            content = openai.imageURL(ImageCreation(command.strings["text"]!!)).joinToString("\n") { it.url }
                         }
                     }
                     "models" -> {
