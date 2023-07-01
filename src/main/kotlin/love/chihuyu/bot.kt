@@ -48,6 +48,8 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
+import kotlin.random.Random
+import kotlin.random.nextInt
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
@@ -212,8 +214,10 @@ fun main() = runBlocking {
         when (command.rootName) {
             "random-vc" -> {
                 interaction.deferPublicResponse().respond {
-                    val vc = interaction.guild.getChannelOrNull(interaction.user.getVoiceStateOrNull()?.data?.channelId ?: return@on) ?: return@on
-                    content = vc.data.recipients.value?.map { interaction.guild.getMember(it) }?.random()?.username
+                    val vcMembers = interaction.user.getVoiceState().getChannelOrNull()!!.voiceStates.toList()
+                    content = vcMembers.map {
+                        interaction.guild.getMember(it.userId).mention
+                    }[Random.nextInt(0..vcMembers.lastIndex)]
                 }
             }
             "ping" -> {
