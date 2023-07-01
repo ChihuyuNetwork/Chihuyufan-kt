@@ -3,7 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     kotlin("jvm") version "1.8.22"
     id("com.github.johnrengelman.shadow") version "8.1.1"
-    id("org.jlleitschuh.gradle.ktlint") version "11.4.0"
+    id("org.jlleitschuh.gradle.ktlint") version "11.4.2"
 }
 
 group = "love.chihuyu"
@@ -21,7 +21,7 @@ dependencies {
     implementation("dev.kord:kord-core:0.9.0")
     implementation("dev.kord:kord-common:0.9.0")
     implementation("dev.kord:kord-rest:0.9.0")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.2.5"))
+    implementation(platform("com.aallam.openai:openai-client-bom:3.3.1"))
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
