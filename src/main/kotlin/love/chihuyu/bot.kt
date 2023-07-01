@@ -186,11 +186,6 @@ fun main() = runBlocking {
                     maxValue = 4000
                 }
             }
-            subCommand("image", "Create image by given words") {
-                string("words", "Words to generate image") {
-                    required = true
-                }
-            }
             subCommand("models", "List of chatgpt's model")
         }
         input("youtube-thumbnail", "Show thumbnails of youtube video") {
@@ -208,12 +203,19 @@ fun main() = runBlocking {
         }
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
+        input("random-vc", "Choose user randomly from vc")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
         val command = interaction.command
 
         when (command.rootName) {
+            "random-vc" -> {
+                interaction.deferPublicResponse().respond {
+                    val vc = interaction.guild.getChannelOrNull(interaction.user.getVoiceStateOrNull()?.data?.channelId ?: return@on) ?: return@on
+                    content = vc.data.recipients.value?.map { interaction.guild.getMember(it) }?.random()?.username
+                }
+            }
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
