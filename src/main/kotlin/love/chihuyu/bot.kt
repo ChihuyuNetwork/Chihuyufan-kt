@@ -24,6 +24,7 @@ import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
+import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
@@ -214,7 +215,7 @@ fun main() = runBlocking {
         when (command.rootName) {
             "random-vc" -> {
                 interaction.deferPublicResponse().respond {
-                    val vcMembers = interaction.user.getVoiceState().getChannelOrNull()!!.voiceStates.toList()
+                    val vcMembers = (interaction.user.getVoiceState().getChannelOrNull()!!.fetchChannel() as VoiceChannel).voiceStates.toList()
                     content = vcMembers.map {
                         interaction.guild.getMember(it.userId).mention
                     }[Random.nextInt(0..vcMembers.lastIndex)]
