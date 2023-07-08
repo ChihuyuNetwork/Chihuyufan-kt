@@ -18,7 +18,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.20.0")
     implementation("org.apache.logging.log4j:log4j-core:2.20.0")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
-    implementation("dev.kord:kord-core:0.9.0")
+    implementation("dev.kord:kord-core:0.10.0")
     implementation("dev.kord:kord-common:0.9.0")
     implementation("dev.kord:kord-rest:0.9.0")
     implementation(platform("com.aallam.openai:openai-client-bom:3.3.1"))
