@@ -21,6 +21,8 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.entity.ReactionEmoji
+import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
@@ -255,18 +257,15 @@ fun main() = runBlocking {
                 }
             }
             "valorant-custom" -> {
-                interaction.deferPublicResponse().respond {
-                    content = "カスタム参加者は参加ボタンを押してください"
+                val msg = interaction.deferPublicResponse().respond {
+                    content = "カスタム参加者は✅を押してください"
                     actionRow {
-                        interactionButton(ButtonStyle.Primary, "valorantcustomjoin") {
-                            label = "参加する"
-                        }
-
                         interactionButton(ButtonStyle.Primary, "valorantcustomspread-${interaction.user.id.value}") {
                             label = "割り振る"
                         }
                     }
-                }
+                }.message
+                msg.addReaction(ReactionEmoji.Unicode("✅"))
             }
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
@@ -570,20 +569,20 @@ fun main() = runBlocking {
 
     kord.on<GuildButtonInteractionCreateEvent> {
         when (val id = interaction.componentId) {
-            "valorantcustomjoin" -> {
-                val joinedMembers = interaction.message.mentionedUsers.map { it.id }.toSet()
-                val newMembers = joinedMembers.plus(interaction.user.id).map { interaction.guild.getMember(it).mention }.joinToString(" ")
-                interaction.deferPublicMessageUpdate().edit {
-                    interaction.message.edit {
-                        content = """
-                        カスタム参加者は参加ボタンを押してください
-                        
-                        参加者一覧
-                        $newMembers
-                        """.trimIndent()
-                    }
-                }
-            }
+//            "valorantcustomjoin" -> {
+//                val joinedMembers = interaction.message.mentionedUsers.map { it.id }.toSet()
+//                val newMembers = joinedMembers.plus(interaction.user.id).map { interaction.guild.getMember(it).mention }.joinToString(" ")
+//                interaction.deferPublicMessageUpdate().edit {
+//                    interaction.message.edit {
+//                        content = """
+//                        カスタム参加者は参加ボタンを押してください
+//
+//                        参加者一覧
+//                        $newMembers
+//                        """.trimIndent()
+//                    }
+//                }
+//            }
             else -> when (val splid = id.split("-")[0]) {
                 "valorantcustomspread" -> {
                     if (interaction.user.id.value != id.split("-")[1].toULong()) {
@@ -593,7 +592,8 @@ fun main() = runBlocking {
                         return@on
                     }
                     interaction.deferPublicResponse().respond {
-                        val joined = interaction.message.mentionedUsers.toList().map { it.mention }
+                        val joined = mutableListOf<User>()
+                        interaction.message.fetchMessage().getReactors(ReactionEmoji.Unicode("✅")).collect { joined += it }
                         val teams = joined.shuffled().minus(kord.getSelf().mention).partition { (joined.indexOf(it) % 2) == 0 }
                         embeds = mutableListOf(
                             if (joined.size < 2) {
