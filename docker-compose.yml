@@ -6,4 +6,4 @@ services:
     env_file:
       - .env
     volumes:
-      - /home/server/chihuyufan-kt/data.db:~/data.db
+      - ~/chihuyufan-kt/data.db:/home/server/chihuyufan-kt/data.db
