@@ -232,7 +232,7 @@ fun main() = runBlocking {
                 interaction.deferPublicResponse().respond {
                     embed {
                         val member = command.members["member"] ?: interaction.user
-                        title = (member.nickname ?: member.username) + "#${member.discriminator}"
+                        title = member.effectiveName
                         color = member.accentColor
                         val avatar = (member.memberAvatar ?: member.avatar ?: member.defaultAvatar)
                         image = avatar.cdnUrl.toUrl {
@@ -247,7 +247,7 @@ fun main() = runBlocking {
                 interaction.deferPublicResponse().respond {
                     embed {
                         val member = command.members["member"] ?: interaction.user
-                        title = (member.nickname ?: member.username) + "#${member.discriminator}"
+                        title = member.effectiveName
                         color = member.accentColor
                         field {
                             value = member.roles.toList().sortedByDescending { it.rawPosition }.joinToString(" ") { it.mention }
@@ -325,7 +325,7 @@ fun main() = runBlocking {
                 var oldContent = msg.message.content
                 chunked.forEach {
                     msg.edit {
-                        content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.displayName ?: kord.getUser(it.first)?.username ?: "Deleted User"}` / ${it.second}msg"
+                        content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.effectiveName ?: "Deleted User"}` / ${it.second}msg"
                         oldContent = content ?: ""
                     }
                 }
@@ -529,7 +529,7 @@ fun main() = runBlocking {
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
                                 BoketsuPoint.findOrNew(user.id.value).point += amount
-                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}に**${amount}ボケツポイント**を追加"
+                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.effectiveName}に**${amount}ボケツポイント**を追加"
                             }
                         }
                     }
@@ -540,7 +540,7 @@ fun main() = runBlocking {
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
                                 val amount = interaction.command.integers["point"]!!
                                 BoketsuPoint.findOrNew(user.id.value).point -= 1
-                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.displayName}から**${amount}ボケツポイント**を没収"
+                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.effectiveName}から**${amount}ボケツポイント**を没収"
                             }
                         }
                     }
@@ -548,16 +548,15 @@ fun main() = runBlocking {
                         interaction.deferPublicResponse().respond {
                             newSuspendedTransaction {
                                 val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
-                                content = "${user.displayName}は**${BoketsuPoint.findOrNew(user.id.value).point}ボケツポイント**を所有しています"
+                                content = "${user.effectiveName}は**${BoketsuPoint.findOrNew(user.id.value).point}ボケツポイント**を所有しています"
                             }
                         }
                     }
                     "ranking" -> {
                         interaction.deferPublicResponse().respond {
                             newSuspendedTransaction {
-                                fun memberName(r: ResultRow) = suspend { interaction.guild.getMember(Snowflake(r[BoketsuPoints.snowflake])).displayName }
                                 content = BoketsuPoints.selectAll().limit(20).sortedByDescending { it[BoketsuPoints.point] }.filter { it[BoketsuPoints.point] != 0L }.mapIndexed { index, resultRow ->
-                                    "${index.inc()}. ${memberName(resultRow).invoke()} (${resultRow[BoketsuPoints.point]}pt)"
+                                    "${index.inc()}. ${interaction.guild.getMember(Snowflake(resultRow[BoketsuPoints.snowflake])).effectiveName} (${resultRow[BoketsuPoints.point]}pt)"
                                 }.joinToString("\n")
                             }
                         }
