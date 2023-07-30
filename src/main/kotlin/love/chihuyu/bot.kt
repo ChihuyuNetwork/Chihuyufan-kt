@@ -566,8 +566,8 @@ fun main() = runBlocking {
             }
 
             "count-member" -> {
-                interaction.deferPublicResponse().respond {
-                    val members = interaction.guild.fetchGuild().members.toList()
+                interaction.deferEphemeralResponse().respond {
+                    val members = interaction.guild.members.toList()
                     content = """
                         Users: ${members.filter { !it.isBot }.size}
                         Bots: ${members.filter { it.isBot }.size}
