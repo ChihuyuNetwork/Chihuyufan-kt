@@ -21,14 +21,14 @@ dependencies {
     implementation("dev.kord:kord-common:0.10.0")
     implementation("dev.kord:kord-core:0.10.0")
     implementation("dev.kord:kord-rest:0.10.0")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.3.1"))
+    implementation(platform("com.aallam.openai:openai-client-bom:3.3.2"))
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
     implementation("org.xerial:sqlite-jdbc:3.42.0.0")
-    implementation("org.jetbrains.exposed:exposed-core:0.41.1")
-    implementation("org.jetbrains.exposed:exposed-dao:0.41.1")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.41.1")
+    implementation("org.jetbrains.exposed:exposed-core:0.42.0")
+    implementation("org.jetbrains.exposed:exposed-dao:0.42.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.42.0")
     implementation(kotlin("stdlib"))
 }
 
