@@ -567,10 +567,14 @@ fun main() = runBlocking {
 
             "count-member" -> {
                 interaction.deferEphemeralResponse().respond {
-                    val members = interaction.guild.members.toList()
+                    var users = 0
+                    var bots = 0
+                    interaction.guild.members.collect {
+                        if (it.isBot) bots += 1 else users += 1
+                    }
                     content = """
-                        Users: ${members.filter { !it.isBot }.size}
-                        Bots: ${members.filter { it.isBot }.size}
+                        Users: $users
+                        Bots: $bots
                         Total: ${interaction.guild.fetchGuild().memberCount}
                     """.trimIndent()
                 }
