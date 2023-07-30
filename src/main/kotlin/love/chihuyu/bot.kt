@@ -209,6 +209,7 @@ fun main() = runBlocking {
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
         input("random-vc", "Choose user randomly from vc")
+        input("count-member", "Count members in the server.")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -561,6 +562,17 @@ fun main() = runBlocking {
                             }
                         }
                     }
+                }
+            }
+
+            "count-member" -> {
+                interaction.deferPublicResponse().respond {
+                    val members = interaction.guild.fetchGuild().members.toList()
+                    content = """
+                        Users: ${members.filter { !it.isBot }.size}
+                        Bots: ${members.filter { it.isBot }.size}
+                        Total: ${interaction.guild.fetchGuild().memberCount}
+                    """.trimIndent()
                 }
             }
         }
