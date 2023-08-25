@@ -25,7 +25,7 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
-    implementation("org.xerial:sqlite-jdbc:3.42.0.0")
+    implementation("org.xerial:sqlite-jdbc:3.42.0.1")
     implementation("org.jetbrains.exposed:exposed-dao:0.42.1")
     implementation("org.jetbrains.exposed:exposed-core:0.42.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.42.1")
