@@ -27,7 +27,7 @@ dependencies {
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
     implementation("org.xerial:sqlite-jdbc:3.43.0.0")
     implementation("org.jetbrains.exposed:exposed-dao:0.43.0")
-    implementation("org.jetbrains.exposed:exposed-core:0.42.1")
+    implementation("org.jetbrains.exposed:exposed-core:0.43.0")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.43.0")
     implementation(kotlin("stdlib"))
 }
