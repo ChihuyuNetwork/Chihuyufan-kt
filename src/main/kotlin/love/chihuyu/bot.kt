@@ -51,8 +51,6 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.io.File
-import kotlin.random.Random
-import kotlin.random.nextInt
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
@@ -218,10 +216,10 @@ fun main() = runBlocking {
         when (command.rootName) {
             "random-vc" -> {
                 interaction.deferPublicResponse().respond {
-                    val vcMembers = (interaction.user.getVoiceState().getChannelOrNull()!!.fetchChannel() as VoiceChannel).voiceStates.toList()
-                    content = vcMembers.map {
-                        interaction.guild.getMember(it.userId).mention
-                    }[Random.nextInt(0..vcMembers.lastIndex)]
+                    val vc = interaction.user.getVoiceState().getChannelOrNull() as? VoiceChannel
+                    val vcMembers = vc!!.fetchChannel().voiceStates.toList()
+                    val human = vcMembers.filterNot { it.getMember().isBot }.random()
+                    content = human.getMember().mention
                 }
             }
             "ping" -> {
@@ -569,7 +567,7 @@ fun main() = runBlocking {
                 interaction.deferEphemeralResponse().respond {
                     var users = 0
                     var bots = 0
-                    interaction.guild.members.collect {
+                    interaction.getGuild().members.collect {
                         if (it.isBot) bots += 1 else users += 1
                     }
                     content = """
