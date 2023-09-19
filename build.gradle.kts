@@ -11,6 +11,7 @@ version = ""
 
 repositories {
     mavenCentral()
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots")
     maven("https://repo.mattmalec.com/repository/releases")
 }
 
@@ -20,6 +21,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.20.0")
     implementation("dev.kord:kord-common:0.10.0")
     implementation("dev.kord:kord-core:0.10.0")
+    implementation("dev.kord:kord-core-voice:0.10.0")
     implementation("dev.kord:kord-rest:0.10.0")
     implementation(platform("com.aallam.openai:openai-client-bom:3.4.1"))
     implementation("io.ktor:ktor-client-okhttp")
