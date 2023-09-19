@@ -30,7 +30,7 @@ import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
-import dev.kord.gateway.Intent
+import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
@@ -207,7 +207,7 @@ fun main() = runBlocking {
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
         input("random-vc", "Choose user randomly from vc")
-        input("count-member", "Count members in the server.")
+        input("emoji-image", "Get a image link from emoji")
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
@@ -457,7 +457,7 @@ fun main() = runBlocking {
                     var tempCount = 0
 
                     completion.collect { chunk ->
-                        tempContent += chunk.choices[0].delta?.content ?: return@collect
+                        tempContent += chunk.choices[0].delta.content ?: return@collect
                         if (tempContent.isNotEmpty() && tempCount % 16 == 0) {
                             msg.edit {
                                 content = tempContent
@@ -560,21 +560,6 @@ fun main() = runBlocking {
                             }
                         }
                     }
-                }
-            }
-
-            "count-member" -> {
-                interaction.deferEphemeralResponse().respond {
-                    var users = 0
-                    var bots = 0
-                    interaction.getGuild().members.collect {
-                        if (it.isBot) bots += 1 else users += 1
-                    }
-                    content = """
-                        Users: $users
-                        Bots: $bots
-                        Total: ${interaction.guild.fetchGuild().memberCount}
-                    """.trimIndent()
                 }
             }
         }
@@ -690,7 +675,7 @@ fun main() = runBlocking {
     // ログインは最後に書く
     kord.login {
         @OptIn(PrivilegedIntent::class)
-        intents += Intent.GuildMembers
+        intents += Intents.all
 
         println("Logged in ${kord.getSelf().tag}")
     }
