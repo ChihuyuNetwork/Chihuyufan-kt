@@ -22,7 +22,7 @@ dependencies {
     implementation("dev.kord:kord-common:0.10.0")
     implementation("dev.kord:kord-core:0.11.1")
     implementation("dev.kord:kord-core-voice:0.10.0")
-    implementation("dev.kord:kord-rest:0.10.0")
+    implementation("dev.kord:kord-rest:0.11.1")
     implementation("dev.kord:kord-voice:0.11.1")
     implementation("dev.kord:kord-gateway:0.10.0")
     implementation(platform("com.aallam.openai:openai-client-bom:3.4.1"))
