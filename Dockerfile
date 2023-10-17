@@ -1,4 +1,4 @@
-FROM eclipse-temurin:21-jre-jammy as builder
+FROM eclipse-temurin:18-jre-jammy as builder
 WORKDIR /opt
 COPY gradle ./gradle
 COPY src ./src
@@ -8,7 +8,7 @@ COPY settings.gradle.kts .
 COPY gradlew .
 RUN ./gradlew shadowJar
 
-FROM eclipse-temurin:21-jre-jammy
+FROM eclipse-temurin:18-jre-jammy
 WORKDIR /opt
 COPY --from=builder /opt/build/libs/chihuyufan-kt-all.jar .
 CMD ["java", "-jar", "chihuyufan-kt-all.jar"]
