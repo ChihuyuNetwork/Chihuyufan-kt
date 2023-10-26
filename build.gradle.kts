@@ -17,7 +17,7 @@ repositories {
 
 dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.21.1")
-    implementation("org.apache.logging.log4j:log4j-core:2.21.0")
+    implementation("org.apache.logging.log4j:log4j-core:2.21.1")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.21.1")
     implementation("dev.kord:kord-common:0.11.1")
     implementation("dev.kord:kord-core:0.11.1")
