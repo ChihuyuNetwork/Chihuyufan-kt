@@ -29,7 +29,7 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp-jvm:2.3.5")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
-    implementation("org.xerial:sqlite-jdbc:3.43.2.1")
+    implementation("org.xerial:sqlite-jdbc:3.43.2.2")
     implementation("org.jetbrains.exposed:exposed-dao:0.44.1")
     implementation("org.jetbrains.exposed:exposed-core:0.44.1")
     implementation("org.jetbrains.exposed:exposed-jdbc:0.44.1")
