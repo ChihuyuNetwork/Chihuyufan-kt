@@ -25,7 +25,7 @@ dependencies {
     implementation("dev.kord:kord-rest:0.11.1")
     implementation("dev.kord:kord-voice:0.11.1")
     implementation("dev.kord:kord-gateway:0.11.1")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.5.0"))
+    implementation(platform("com.aallam.openai:openai-client-bom:3.5.1"))
     implementation("io.ktor:ktor-client-okhttp-jvm:2.3.5")
     implementation("com.aallam.openai:openai-client")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
