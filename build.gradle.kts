@@ -21,7 +21,7 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.22.0")
     implementation("dev.kord:kord-common:0.11.1")
     implementation("dev.kord:kord-core:0.11.1")
-    implementation("dev.kord:kord-core-voice:0.11.1")
+    implementation("dev.kord:kord-core-voice:0.12.0")
     implementation("dev.kord:kord-rest:0.12.0")
     implementation("dev.kord:kord-voice:0.12.0")
     implementation("dev.kord:kord-gateway:0.12.0")
