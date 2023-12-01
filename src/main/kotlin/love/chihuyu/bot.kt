@@ -30,6 +30,7 @@ import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.on
+import dev.kord.gateway.ALL
 import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
@@ -675,7 +676,7 @@ fun main() = runBlocking {
     // ログインは最後に書く
     kord.login {
         @OptIn(PrivilegedIntent::class)
-        intents += Intents.all
+        intents += Intents.ALL
 
         println("Logged in ${kord.getSelf().tag}")
     }
