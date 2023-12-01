@@ -52,15 +52,15 @@ tasks {
 }
 
 kotlin {
-    jvmToolchain(18)
+    jvmToolchain(20)
 }
 
 val compileKotlin: KotlinCompile by tasks
 compileKotlin.kotlinOptions {
-    jvmTarget = "18"
+    jvmTarget = "20"
 }
 
 val compileTestKotlin: KotlinCompile by tasks
 compileTestKotlin.kotlinOptions {
-    jvmTarget = "18"
+    jvmTarget = "20"
 }
