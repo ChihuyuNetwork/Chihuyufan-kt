@@ -29,6 +29,7 @@ import dev.kord.core.entity.channel.TextChannel
 import dev.kord.core.entity.channel.VoiceChannel
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
+import dev.kord.core.event.message.MessageCreateEvent
 import dev.kord.core.on
 import dev.kord.gateway.ALL
 import dev.kord.gateway.Intents
@@ -209,6 +210,21 @@ fun main() = runBlocking {
         input("message-ranking", "Show ranking of all users messages")
         input("random-vc", "Choose user randomly from vc")
         input("emoji-image", "Get a image link from emoji")
+    }
+
+    kord.on<MessageCreateEvent> {
+        val channelId = message.channelId.value
+
+        when (channelId) {
+            // やりたいやつ
+            1134479379267866624u -> {
+                message.addReaction(ReactionEmoji.Unicode("✨"))
+            }
+            // ギャラリー
+            929029506595954730u -> {
+                message.addReaction(ReactionEmoji.Unicode("❤️"))
+            }
+        }
     }
 
     kord.on<GuildChatInputCommandInteractionCreateEvent> {
