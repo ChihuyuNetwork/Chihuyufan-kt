@@ -23,7 +23,7 @@ dependencies {
     implementation("dev.kord:kord-core:0.12.0")
     implementation("dev.kord:kord-core-voice:0.12.0")
     implementation("dev.kord:kord-rest:0.12.0")
-    implementation("dev.kord:kord-voice:0.12.0")
+    implementation("dev.kord:kord-voice:0.13.0")
     implementation("dev.kord:kord-gateway:0.12.0")
     implementation(platform("com.aallam.openai:openai-client-bom:3.6.2"))
     implementation("io.ktor:ktor-client-okhttp-jvm:2.3.7")
