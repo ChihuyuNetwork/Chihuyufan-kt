@@ -32,7 +32,7 @@ dependencies {
     implementation("org.xerial:sqlite-jdbc:3.45.0.0")
     implementation("org.jetbrains.exposed:exposed-dao:0.47.0")
     implementation("org.jetbrains.exposed:exposed-core:0.46.0")
-    implementation("org.jetbrains.exposed:exposed-jdbc:0.46.0")
+    implementation("org.jetbrains.exposed:exposed-jdbc:0.47.0")
     implementation(kotlin("stdlib"))
 }
 
