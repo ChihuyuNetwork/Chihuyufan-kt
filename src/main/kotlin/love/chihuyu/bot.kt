@@ -129,7 +129,7 @@ fun main() = runBlocking {
             subCommand("models", "使えるモデル一覧を表示します")
         }
         input("youtube-thumbnail", "Youtubeの動画のサムネイルを取得します") {
-            string("target", "IDもしくはURL") { required = true }
+            string("target", "URL") { required = true }
         }
         input("valorant-custom", "Valorantカスタムの割り振りをします") {
             user("ignore1", "無視するメンバー")
@@ -485,22 +485,26 @@ fun main() = runBlocking {
             "youtube-thumbnail" -> {
                 interaction.deferPublicResponse().respond {
                     val target = interaction.command.strings["target"]!!
-                    listOf("default", "hqdefault", "mqdefault", "sddefault", "maxresdefault").forEach {
-                        content += "https://img.youtube.com/vi/${
-                            if ("https://" in target) {
-                                if ("youtu.be" in target) {
-                                    target.substringAfter("be/").substringBefore('&')
-                                } else if ("v=" in target) {
-                                    target.substringAfter("v=").substringBefore('&')
-                                } else if ("shorts" in target) {
-                                    target.substringAfter("shorts/").substringBefore('&')
+                    listOf("default", "hqdefault", "mqdefault", "sddefault", "maxresdefault")
+                        .forEach {
+                        embed {
+                            title = it
+                            image = "https://img.youtube.com/vi_webp/${
+                                if ("https://" in target) {
+                                    if ("youtu.be" in target) {
+                                        target.substringAfter("be/").substringBefore('&')
+                                    } else if ("v=" in target) {
+                                        target.substringAfter("v=").substringBefore('&')
+                                    } else if ("shorts" in target) {
+                                        target.substringAfter("shorts/").substringBefore('&')
+                                    } else {
+                                        target
+                                    }
                                 } else {
                                     target
                                 }
-                            } else {
-                                target
-                            }
-                        }/$it.jpg"
+                            }/$it.webp"
+                        }
                     }
                 }
             }
