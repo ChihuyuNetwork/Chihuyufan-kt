@@ -68,72 +68,76 @@ fun main() = runBlocking {
 
     kord.createGlobalApplicationCommands {
         input("ping", "Pong!")
-        input("avatar", "Display member's avatar") {
-            user("member", "Specify user to display avatar")
+        input("avatar", "メンバーのアバターを表示します") {
+            user("member", "メンバー")
         }
-        input("roles", "Display member's roles") {
-            user("member", "Specify user to display roles")
+        input("roles", "メンバーのロール一覧を表示します") {
+            user("member", "メンバー")
         }
-        input("pterodactyl", "Manage chihuyu network's pterodactyl") {
-            subCommand("servers", "List all servers")
-            subCommand("nodeinfo", "Display informations of specify node") {
-                string("name", "Node name to display informations") { required = true }
+        input("pterodactyl", "Pterodactylに関する操作を行います") {
+            subCommand("servers", "サーバー一覧を表示します")
+            subCommand("nodeinfo", "ノードに関する情報を表示します") {
+                string("name", "ノード名") { required = true }
             }
-            subCommand("serverinfo", "Display informations of specify server") {
-                string("name", "Server name to display informations") { required = true }
+            subCommand("serverinfo", "サーバーに関する情報を表示します") {
+                string("name", "サーバー名") { required = true }
             }
-            subCommand("up", "Start the specify server") {
-                string("name", "Server name to start") { required = true }
+            subCommand("up", "サーバーを開始します") {
+                string("name", "サーバー名") { required = true }
             }
-            subCommand("down", "Shutdown the specify server") {
-                string("name", "Server name to shutdown") { required = true }
+            subCommand("down", "サーバーを停止します") {
+                string("name", "サーバー名") { required = true }
             }
-            subCommand("restart", "Restart the specify server") {
-                string("name", "Server name to shutdown") { required = true }
+            subCommand("restart", "サーバーを再起動します") {
+                string("name", "サーバー名") { required = true }
             }
-            subCommand("kill", "Kill the specify server") {
-                string("name", "Server name to shutdown") { required = true }
+            subCommand("kill", "サーバーを強制停止します") {
+                string("name", "サーバー名") { required = true }
             }
-            subCommand("send", "Send command to server") {
-                string("name", "Server name to send command") { required = true }
-                string("command", "Don't need slash") { required = true }
+            subCommand("send", "サーバーにコマンドを送信します") {
+                string("name", "サーバー名") { required = true }
+                string("command", "コマンド") { required = true }
             }
-            subCommand("backups", "List all server's backups")
+            subCommand("backups", "バックアップ一覧を表示します")
         }
-        input("gpt", "Use CahtGPT API") {
-            subCommand("chat", "Start new session with ChatGPT") {
-                string("text", "Text message to send to chatgpt") { required = true }
-                string("model", "Model of chatgpt to use")
-                number("temperature", "Temperature of ChatGPT message(0~2)") {
+        input("gpt", "ChatGPTに関する操作を行います") {
+            subCommand("chat", "新しいセッションを開始します") {
+                string("text", "メッセージ") { required = true }
+                string("model", "モデル")
+                number("temperature", "文章の自由度") {
                     minValue = .0
                     maxValue = 2.0
                 }
-                integer("max_tokens", "Max message length (100~4000)") {
+                integer("max_tokens", "文章の最大の長さ") {
                     minValue = 100
                     maxValue = 4000
                 }
             }
-            subCommand("reply", "Continue communication in current session") {
-                string("text", "Text message to send to chatgpt") { required = true }
-                string("model", "Model of chatgpt to use")
-                number("temperature", "Temperature of ChatGPT message(0~2)") {
+            subCommand("reply", "現在のセッションを続けます") {
+                string("text", "メッセージ") { required = true }
+                string("model", "モデル")
+                number("temperature", "文章の自由度") {
                     minValue = .0
                     maxValue = 2.0
                 }
-                integer("max_tokens", "Max message length (100~4000)") {
+                integer("max_tokens", "文章の最大の長さ") {
                     minValue = 100
                     maxValue = 4000
                 }
             }
-            subCommand("models", "List of chatgpt's model")
+            subCommand("models", "使えるモデル一覧を表示します")
         }
-        input("youtube-thumbnail", "Show thumbnails of youtube video") {
-            string("target", "ID or URL of youtube video") { required = true }
+        input("youtube-thumbnail", "Youtubeの動画のサムネイルを取得します") {
+            string("target", "IDもしくはURL") { required = true }
         }
-        input("valorant-custom", "Spread members play valorant for custom mode")
-        input("message-ranking", "Show ranking of all users messages")
-        input("random-vc", "Choose user randomly from vc")
-        input("emoji-image", "Get a image link from emoji")
+        input("valorant-custom", "Valorantカスタムの割り振りをします") {
+            string("ignore", "")
+        }
+        input("message-ranking", "メンバーのメッセージ数のランキングを表示します")
+        input("random-vc", "現在いるVCからランダムにメンバーを抽選します")
+        input("emoji-image", "絵文字の画像リンクを取得します") {
+            string("emoji", "絵文字") { required = true }
+        }
     }
 
     kord.on<MessageCreateEvent> {
@@ -155,14 +159,6 @@ fun main() = runBlocking {
         val command = interaction.command
 
         when (command.rootName) {
-            "random-vc" -> {
-                interaction.deferPublicResponse().respond {
-                    val vc = interaction.user.getVoiceState().getChannelOrNull() as? VoiceChannel
-                    val vcMembers = vc!!.fetchChannel().voiceStates.toList()
-                    val human = vcMembers.filterNot { it.getMember().isBot }.random()
-                    content = human.getMember().mention
-                }
-            }
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
@@ -198,14 +194,8 @@ fun main() = runBlocking {
             }
             "valorant-custom" -> {
                 val msg = interaction.deferPublicResponse().respond {
-                    content = "カスタム参加者は✅を押してください"
-                    actionRow {
-                        interactionButton(ButtonStyle.Primary, "valorantcustomspread-${interaction.user.id.value}") {
-                            label = "割り振る"
-                        }
-                    }
-                }.message
-                msg.addReaction(ReactionEmoji.Unicode("✅"))
+
+                }
             }
             "message-ranking" -> {
                 val msg = interaction.deferPublicResponse().respond {
@@ -453,6 +443,35 @@ fun main() = runBlocking {
                                 target
                             }
                         }/$it.jpg"
+                    }
+                }
+            }
+            "random-vc" -> {
+                interaction.deferPublicResponse().respond {
+                    val vc = interaction.user.getVoiceState().getChannelOrNull() as? VoiceChannel
+                    if (vc == null) {
+                        content = "VCに参加してから実行してください"
+                        return@respond
+                    }
+                    val vcMembers = vc.fetchChannel().voiceStates.toList()
+                    val member = vcMembers.filterNot { it.getMember().isBot }.random()
+                    content = member.getMember().mention
+                }
+            }
+            "emoji-image" -> {
+                interaction.deferPublicResponse().respond {
+                    val emoji = interaction.guild.emojis.firstOrNull { it.name == command.strings["emoji"] }
+                    if (emoji == null) {
+                        content = "絵文字が見つかりませんでした"
+                        return@respond
+                    }
+                    embed {
+                        title = emoji.name
+                        image = emoji.image.cdnUrl.toUrl {
+                            size = Image.Size.Size4096
+                            format = if (emoji.isAnimated) Image.Format.GIF else Image.Format.PNG
+                        }
+                        timestamp = Clock.System.now()
                     }
                 }
             }
