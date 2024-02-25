@@ -20,6 +20,7 @@ import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.ReactionEmoji
+import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
@@ -33,8 +34,8 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
+import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
-import dev.kord.rest.builder.message.modify.actionRow
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
@@ -131,7 +132,26 @@ fun main() = runBlocking {
             string("target", "IDもしくはURL") { required = true }
         }
         input("valorant-custom", "Valorantカスタムの割り振りをします") {
-            string("ignore", "")
+            user("ignore1", "無視するメンバー")
+            user("ignore2", "無視するメンバー")
+            user("ignore3", "無視するメンバー")
+            user("ignore4", "無視するメンバー")
+            user("ignore5", "無視するメンバー")
+            user("ignore6", "無視するメンバー")
+            user("ignore7", "無視するメンバー")
+            user("ignore8", "無視するメンバー")
+            user("ignore9", "無視するメンバー")
+            user("ignore10", "無視するメンバー")
+            user("ignore11", "無視するメンバー")
+            user("ignore12", "無視するメンバー")
+            user("ignore13", "無視するメンバー")
+            user("ignore14", "無視するメンバー")
+            user("ignore15", "無視するメンバー")
+            user("ignore16", "無視するメンバー")
+            user("ignore17", "無視するメンバー")
+            user("ignore18", "無視するメンバー")
+            user("ignore19", "無視するメンバー")
+            user("ignore20", "無視するメンバー")
         }
         input("message-ranking", "メンバーのメッセージ数のランキングを表示します")
         input("random-vc", "現在いるVCからランダムにメンバーを抽選します")
@@ -193,8 +213,42 @@ fun main() = runBlocking {
                 }
             }
             "valorant-custom" -> {
-                val msg = interaction.deferPublicResponse().respond {
+                interaction.deferPublicResponse().respond {
+                    val ignoreds = command.users.values
 
+                    val channel = interaction.user.getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@respond
+                    val attackers = mutableListOf<User>()
+                    val defenders = mutableListOf<User>()
+
+                    channel.voiceStates.toList().shuffled().filter {
+                        interaction.guild.getMember(it.userId) !in ignoreds && !interaction.guild.getMember(it.userId).isBot
+                    }.forEachIndexed { index, voiceState ->
+                        val user = interaction.guild.getMember(voiceState.userId)
+                        if (index % 2 == 1) {
+                            attackers += user
+                        } else {
+                            defenders += user
+                        }
+                    }
+
+                    embed {
+                        title = "アタッカーサイド"
+                        color = Color(255, 100, 100)
+                        description = attackers.joinToString("\n") { it.mention }
+                    }
+                    embed {
+                        title = "ディフェンダーサイド"
+                        color = Color(100, 200, 190)
+                        description = defenders.joinToString("\n") { it.mention }
+                    }
+
+                    val maps = listOf("サンセット", "ロータス", "パール", "フラクチャー", "ブリーズ", "アイスボックス", "バインド", "ヘイブン", "スプリット", "アセント")
+
+                    embed {
+                        title = "マップ"
+                        color = Color(200, 200, 200)
+                        description = maps.random()
+                    }
                 }
             }
             "message-ranking" -> {
