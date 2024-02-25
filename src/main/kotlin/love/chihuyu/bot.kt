@@ -12,8 +12,6 @@ import com.mattmalec.pterodactyl4j.UtilizationState
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
-import dev.kord.common.annotation.KordExperimental
-import dev.kord.common.annotation.KordUnsafe
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
@@ -22,7 +20,6 @@ import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.entity.ReactionEmoji
-import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
 import dev.kord.core.entity.channel.GuildMessageChannel
 import dev.kord.core.entity.channel.TextChannel
@@ -36,34 +33,25 @@ import dev.kord.gateway.Intents
 import dev.kord.gateway.PrivilegedIntent
 import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
-import dev.kord.rest.builder.message.EmbedBuilder
+import dev.kord.rest.builder.message.embed
 import dev.kord.rest.builder.message.modify.actionRow
-import dev.kord.rest.builder.message.modify.embed
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
-import love.chihuyu.database.BoketsuPoint
-import love.chihuyu.database.BoketsuPoints
 import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.MemberUtils.checkInfraPermission
-import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.experimental.newSuspendedTransaction
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.io.File
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
-@OptIn(BetaOpenAI::class, FlowPreview::class, KordExperimental::class, KordUnsafe::class, PrivilegedIntent::class)
+@OptIn(PrivilegedIntent::class)
 fun main() = runBlocking {
     val pteroApplication = PteroBuilder.createApplication("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_APP_TOKEN"))
     val pteroClient = PteroBuilder.createClient("https://panel.chihuyu.love/", System.getenv("PTERODACTYL_CLIENT_TOKEN"))
     val openai = OpenAI(System.getenv("OPENAI_TOKEN"))
-    val dbFile = File("data.db")
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
@@ -78,16 +66,6 @@ fun main() = runBlocking {
         }
     }
 
-    if (!dbFile.exists()) {
-        dbFile.createNewFile()
-    }
-
-    Database.connect("jdbc:sqlite:${dbFile.path}", driver = "org.sqlite.JDBC")
-    transaction {
-        addLogger(StdOutSqlLogger)
-        SchemaUtils.createMissingTablesAndColumns(BoketsuPoints, withLogs = true)
-    }
-
     kord.createGlobalApplicationCommands {
         input("ping", "Pong!")
         input("avatar", "Display member's avatar") {
@@ -96,77 +74,35 @@ fun main() = runBlocking {
         input("roles", "Display member's roles") {
             user("member", "Specify user to display roles")
         }
-        input("boketsu", "Manage boketsu user's boketsu points") {
-            subCommand("add", "Add specify boketsu points to user") {
-                user("user", "User to add boketsu point") {
-                    required = true
-                }
-                integer("point", "Amount of boketsu point to add") {
-                    required = true
-                }
-            }
-            subCommand("remove", "Remove specify boketsu points to user") {
-                user("user", "User to remove boketsu point") {
-                    required = true
-                }
-                integer("point", "Amount of boketsu point to remove") {
-                    required = true
-                }
-            }
-            subCommand("stats", "Show boketsu stats of specify user") {
-                user("user", "User to show boketsu stats") {
-                    required = true
-                }
-            }
-            subCommand("ranking", "Show boketsu point ranking")
-        }
         input("pterodactyl", "Manage chihuyu network's pterodactyl") {
             subCommand("servers", "List all servers")
             subCommand("nodeinfo", "Display informations of specify node") {
-                string("name", "Node name to display informations") {
-                    required = true
-                }
+                string("name", "Node name to display informations") { required = true }
             }
             subCommand("serverinfo", "Display informations of specify server") {
-                string("name", "Server name to display informations") {
-                    required = true
-                }
+                string("name", "Server name to display informations") { required = true }
             }
             subCommand("up", "Start the specify server") {
-                string("name", "Server name to start") {
-                    required = true
-                }
+                string("name", "Server name to start") { required = true }
             }
             subCommand("down", "Shutdown the specify server") {
-                string("name", "Server name to shutdown") {
-                    required = true
-                }
+                string("name", "Server name to shutdown") { required = true }
             }
             subCommand("restart", "Restart the specify server") {
-                string("name", "Server name to shutdown") {
-                    required = true
-                }
+                string("name", "Server name to shutdown") { required = true }
             }
             subCommand("kill", "Kill the specify server") {
-                string("name", "Server name to shutdown") {
-                    required = true
-                }
+                string("name", "Server name to shutdown") { required = true }
             }
             subCommand("send", "Send command to server") {
-                string("name", "Server name to send command") {
-                    required = true
-                }
-                string("command", "Don't need slash") {
-                    required = true
-                }
+                string("name", "Server name to send command") { required = true }
+                string("command", "Don't need slash") { required = true }
             }
             subCommand("backups", "List all server's backups")
         }
         input("gpt", "Use CahtGPT API") {
             subCommand("chat", "Start new session with ChatGPT") {
-                string("text", "Text message to send to chatgpt") {
-                    required = true
-                }
+                string("text", "Text message to send to chatgpt") { required = true }
                 string("model", "Model of chatgpt to use")
                 number("temperature", "Temperature of ChatGPT message(0~2)") {
                     minValue = .0
@@ -178,9 +114,7 @@ fun main() = runBlocking {
                 }
             }
             subCommand("reply", "Continue communication in current session") {
-                string("text", "Text message to send to chatgpt") {
-                    required = true
-                }
+                string("text", "Text message to send to chatgpt") { required = true }
                 string("model", "Model of chatgpt to use")
                 number("temperature", "Temperature of ChatGPT message(0~2)") {
                     minValue = .0
@@ -194,17 +128,7 @@ fun main() = runBlocking {
             subCommand("models", "List of chatgpt's model")
         }
         input("youtube-thumbnail", "Show thumbnails of youtube video") {
-            string("target", "ID or URL of youtube video") {
-                required = true
-            }
-            string("mode", "Thumbnail type of video") {
-                required = true
-                choice("Default", "default")
-                choice("High Quality", "hqdefault")
-                choice("Medium Quality", "mqdefault")
-                choice("Standard", "sddefault")
-                choice("Maximum", "maxresdefault")
-            }
+            string("target", "ID or URL of youtube video") { required = true }
         }
         input("valorant-custom", "Spread members play valorant for custom mode")
         input("message-ranking", "Show ranking of all users messages")
@@ -513,69 +437,22 @@ fun main() = runBlocking {
             "youtube-thumbnail" -> {
                 interaction.deferPublicResponse().respond {
                     val target = interaction.command.strings["target"]!!
-                    val mode = interaction.command.strings["mode"]!!
-                    embed {
-                        val id = "https://img.youtube.com/vi/${
-                        if ("https://" in target) {
-                            if ("youtu.be" in target) {
-                                target.substringAfter("be/").substringBefore('&')
-                            } else if ("v=" in target) {
-                                target.substringAfter("v=").substringBefore('&')
-                            } else if ("shorts" in target) {
-                                target.substringAfter("shorts/").substringBefore('&')
+                    listOf("default", "hqdefault", "mqdefault", "sddefault", "maxresdefault").forEach {
+                        content += "https://img.youtube.com/vi/${
+                            if ("https://" in target) {
+                                if ("youtu.be" in target) {
+                                    target.substringAfter("be/").substringBefore('&')
+                                } else if ("v=" in target) {
+                                    target.substringAfter("v=").substringBefore('&')
+                                } else if ("shorts" in target) {
+                                    target.substringAfter("shorts/").substringBefore('&')
+                                } else {
+                                    target
+                                }
                             } else {
                                 target
                             }
-                        } else {
-                            target
-                        }
-                        }/$mode.jpg"
-                        timestamp = Clock.System.now()
-                        image = id
-                    }
-                }
-            }
-
-            "boketsu" -> {
-                when (command.data.options.value?.get(0)?.name) {
-                    "add" -> {
-                        interaction.deferPublicResponse().respond {
-                            newSuspendedTransaction {
-                                addLogger(StdOutSqlLogger)
-                                val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
-                                val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value).point += amount
-                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.effectiveName}に**${amount}ボケツポイント**を追加"
-                            }
-                        }
-                    }
-                    "remove" -> {
-                        interaction.deferPublicResponse().respond {
-                            newSuspendedTransaction {
-                                addLogger(StdOutSqlLogger)
-                                val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
-                                val amount = interaction.command.integers["point"]!!
-                                BoketsuPoint.findOrNew(user.id.value).point -= 1
-                                content = if (interaction.user.id.value != 716263398886604830.toULong()) "貴様、ボケツではないな・・・" else "${user.effectiveName}から**${amount}ボケツポイント**を没収"
-                            }
-                        }
-                    }
-                    "stats" -> {
-                        interaction.deferPublicResponse().respond {
-                            newSuspendedTransaction {
-                                val user = interaction.command.users["user"]!!.asMember(interaction.guildId)
-                                content = "${user.effectiveName}は**${BoketsuPoint.findOrNew(user.id.value).point}ボケツポイント**を所有しています"
-                            }
-                        }
-                    }
-                    "ranking" -> {
-                        interaction.deferPublicResponse().respond {
-                            newSuspendedTransaction {
-                                content = BoketsuPoints.selectAll().limit(20).sortedByDescending { it[BoketsuPoints.point] }.filter { it[BoketsuPoints.point] != 0L }.mapIndexed { index, resultRow ->
-                                    "${index.inc()}. ${interaction.guild.getMember(Snowflake(resultRow[BoketsuPoints.snowflake])).effectiveName} (${resultRow[BoketsuPoints.point]}pt)"
-                                }.joinToString("\n")
-                            }
-                        }
+                        }/$it.jpg"
                     }
                 }
             }
@@ -584,53 +461,7 @@ fun main() = runBlocking {
 
     kord.on<GuildButtonInteractionCreateEvent> {
         when (val id = interaction.componentId) {
-//            "valorantcustomjoin" -> {
-//                val joinedMembers = interaction.message.mentionedUsers.map { it.id }.toSet()
-//                val newMembers = joinedMembers.plus(interaction.user.id).map { interaction.guild.getMember(it).mention }.joinToString(" ")
-//                interaction.deferPublicMessageUpdate().edit {
-//                    interaction.message.edit {
-//                        content = """
-//                        カスタム参加者は参加ボタンを押してください
-//
-//                        参加者一覧
-//                        $newMembers
-//                        """.trimIndent()
-//                    }
-//                }
-//            }
             else -> when (val splid = id.split("-")[0]) {
-                "valorantcustomspread" -> {
-                    if (interaction.user.id.value != id.split("-")[1].toULong()) {
-                        interaction.deferEphemeralResponse().respond {
-                            content = "コマンドを実行した人しか割り振りできません"
-                        }
-                        return@on
-                    }
-                    interaction.deferPublicResponse().respond {
-                        val joined = mutableListOf<User>()
-                        interaction.message.fetchMessage().getReactors(ReactionEmoji.Unicode("✅")).collect { joined += it }
-                        val teams = joined.shuffled().minus(kord.getSelf().mention).partition { (joined.indexOf(it) % 2) == 0 }
-                        embeds = mutableListOf(
-                            if (joined.size < 2) {
-                                EmbedBuilder()
-                                    .apply {
-                                        title = "人数が足りません"
-                                        timestamp = Clock.System.now()
-                                    }
-                            } else {
-                                val maps = mutableListOf("アイスボックス", "アセント", "スプリット", "パール", "バインド", "フラクチャー", "ブリーズ", "ヘイヴン", "ロータス")
-                                EmbedBuilder()
-                                    .apply {
-                                        title = "チーム割り振り結果"
-                                        field("マップ", false) { maps.random() }
-                                        field("アタッカーサイド", false) { teams.first.joinToString("\n") }
-                                        field("ディフェンダーサイド", false) { teams.second.joinToString("\n") }
-                                        timestamp = Clock.System.now()
-                                    }
-                            }
-                        )
-                    }
-                }
                 "refreshstatusserver" -> {
                     interaction.deferPublicMessageUpdate().edit {
                         interaction.message.edit {
