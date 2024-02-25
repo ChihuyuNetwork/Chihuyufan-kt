@@ -216,7 +216,11 @@ fun main() = runBlocking {
                 interaction.deferPublicResponse().respond {
                     val ignoreds = command.users.values
 
-                    val channel = interaction.user.getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel ?: return@respond
+                    val channel = interaction.user.getVoiceStateOrNull()?.getChannelOrNull() as? VoiceChannel
+                    if (channel == null) {
+                        content = "VCに参加してから実行してください"
+                        return@respond
+                    }
                     val attackers = mutableListOf<User>()
                     val defenders = mutableListOf<User>()
 
