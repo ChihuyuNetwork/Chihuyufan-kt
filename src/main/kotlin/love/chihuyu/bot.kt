@@ -287,7 +287,7 @@ fun main() = runBlocking {
                         println("[#$name] Found ${message.index.inc()} messages")
                         channelCountingFlow[name] = channelCountingFlow[name]?.inc() ?: 1
                         tempCount += 1
-                        if (tempCount % 101 == 0) refreshCountingStatus()
+                        if (tempCount % 99 == 0) refreshCountingStatus()
                     }.collect()
                     channelCountingFlow.remove(name)
                     refreshCountingStatus()
