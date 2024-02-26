@@ -267,11 +267,12 @@ fun main() = runBlocking {
                 val channels = interaction.guild.channels.toList()
 
                 suspend fun refreshCountingStatus() {
+                    println("Edit Request")
                     msg.edit {
                         content = "メッセージを集計中・・・"
                         embed {
                             title = "現在集計中のチャンネル/スレッド"
-                            description = channelCountingFlow.toList().sortedBy { it.first }.joinToString("\n") { "[__**${it.second}**件__] <#${it.first}>" }
+                            description = channelCountingFlow.toList().sortedBy { it.second }.joinToString("\n") { "[__**${it.second}**件__] <#${it.first.value.toLong()}>" }
                         }
                     }
                 }
@@ -287,7 +288,7 @@ fun main() = runBlocking {
                         println("[#$name] Found ${message.index.inc()} messages")
                         channelCountingFlow[targetChannel.id] = channelCountingFlow[targetChannel.id]?.inc() ?: 1
                         tempCount += 1
-                        if (tempCount % 100 == 0) refreshCountingStatus()
+                        if (tempCount % 1000 == 0) refreshCountingStatus()
                     }.collect()
                     channelCountingFlow.remove(targetChannel.id)
                     refreshCountingStatus()
