@@ -263,7 +263,7 @@ fun main() = runBlocking {
                 }
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
-                val channelCountingFlow = mutableMapOf<String, Int>()
+                val channelCountingFlow = mutableMapOf<Snowflake, Int>()
                 val channels = interaction.guild.channels.toList()
 
                 suspend fun refreshCountingStatus() {
@@ -271,7 +271,7 @@ fun main() = runBlocking {
                         content = "メッセージを集計中・・・"
                         embed {
                             title = "現在集計中のチャンネル/スレッド"
-                            description = channelCountingFlow.toList().sortedBy { it.first }.joinToString("\n") { "[__**${it.second}**件__] `#${it.first}`" }
+                            description = channelCountingFlow.toList().sortedBy { it.first }.joinToString("\n") { "[__**${it.second}**件__] <#${it.first}>" }
                         }
                     }
                 }
@@ -285,11 +285,11 @@ fun main() = runBlocking {
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
                         println("[#$name] Found ${message.index.inc()} messages")
-                        channelCountingFlow[name] = channelCountingFlow[name]?.inc() ?: 1
+                        channelCountingFlow[targetChannel.id] = channelCountingFlow[targetChannel.id]?.inc() ?: 1
                         tempCount += 1
                         if (tempCount % 100 == 0) refreshCountingStatus()
                     }.collect()
-                    channelCountingFlow.remove(name)
+                    channelCountingFlow.remove(targetChannel.id)
                     refreshCountingStatus()
                 }
 
