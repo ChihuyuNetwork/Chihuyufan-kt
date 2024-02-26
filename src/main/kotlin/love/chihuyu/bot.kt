@@ -1,6 +1,5 @@
 package love.chihuyu
 
-import com.aallam.openai.api.BetaOpenAI
 import com.aallam.openai.api.chat.ChatCompletionRequest
 import com.aallam.openai.api.chat.ChatMessage
 import com.aallam.openai.api.chat.ChatRole
@@ -46,7 +45,6 @@ import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.MemberUtils.checkInfraPermission
 import okhttp3.internal.wait
 
-@OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
 // 本来suspendにしないといけないが、メイン関数にするためにrunBlockingにしている
@@ -258,12 +256,14 @@ fun main() = runBlocking {
                 }
             }
             "message-ranking" -> {
-                val msg = interaction.deferPublicResponse().respond {
-                    content = "チャンネル/スレッドをカウント中・・・"
+                //15分でインタラクションのメッセージは期限が切れてエラー起きるのでここで完結させておく
+                interaction.deferPublicResponse().respond {
+                    content = "集計を開始します"
                 }
+                val msg = interaction.channel.createMessage("チャンネル/スレッドをカウント中・・・")
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
-                val channelCountingFlow = mutableMapOf<Snowflake, Int>()
+                val channelCountingFlow = mutableMapOf<Snowflake, Pair<String, Int>>()
                 val channels = interaction.guild.channels.toList()
 
                 suspend fun refreshCountingStatus() {
@@ -272,7 +272,7 @@ fun main() = runBlocking {
                         content = "メッセージを集計中・・・"
                         embed {
                             title = "現在集計中のチャンネル/スレッド"
-                            description = channelCountingFlow.toList().sortedBy { it.second }.joinToString("\n") { "[__**${it.second}**件__] <#${it.first.value.toLong()}>" }
+                            description = channelCountingFlow.toList().sortedBy { it.second.first }.joinToString("\n") { "[__**${it.second.second}**件__] <#${it.first.value.toLong()}>" }
                         }
                     }
                 }
@@ -286,9 +286,9 @@ fun main() = runBlocking {
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
                         println("[#$name] Found ${message.index.inc()} messages")
-                        channelCountingFlow[targetChannel.id] = channelCountingFlow[targetChannel.id]?.inc() ?: 1
+                        channelCountingFlow[targetChannel.id] = Pair(name, channelCountingFlow[targetChannel.id]?.second?.inc() ?: 1)
                         tempCount += 1
-                        if (tempCount % 1000 == 0) refreshCountingStatus()
+                        if (tempCount % 100 == 0) refreshCountingStatus()
                     }.collect()
                     channelCountingFlow.remove(targetChannel.id)
                     refreshCountingStatus()
@@ -296,9 +296,6 @@ fun main() = runBlocking {
 
                 msg.edit {
                     content = "メッセージを集計中・・・"
-                    embed {
-                        title = "現在集計中のチャンネル/スレッド"
-                    }
                 }
 
                 channels.forEach channel@{ channel ->
@@ -327,7 +324,7 @@ fun main() = runBlocking {
                 }
 
                 val chunked = messageCountMap.toList().sortedByDescending { it.second }
-                var oldContent = msg.message.content
+                var oldContent = msg.content
                 chunked.forEach {
                     msg.edit {
                         content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.effectiveName ?: "Deleted User"}` / ${it.second}msg"
