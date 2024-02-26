@@ -37,12 +37,14 @@ import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.datetime.Clock
 import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.MemberUtils.checkInfraPermission
+import okhttp3.internal.wait
 
 @OptIn(BetaOpenAI::class)
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
@@ -261,45 +263,59 @@ fun main() = runBlocking {
                 }
 
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
+                val channelCountingFlow = mutableMapOf<String, Int>()
                 val channels = interaction.guild.channels.toList()
-                val activeThreads = channels.flatMap { (it as? TextChannel)?.activeThreads?.toList() ?: emptyList() }
-                val privateThreads = channels.flatMap { (it as? TextChannel)?.getPrivateArchivedThreads()?.toList() ?: emptyList() }
-                val publicThreads = channels.flatMap { (it as? TextChannel)?.getPublicArchivedThreads()?.toList() ?: emptyList() }
+
+                suspend fun refreshCountingStatus() {
+                    msg.edit {
+                        content = "メッセージを集計中・・・"
+                        embed {
+                            title = "現在集計中のチャンネル/スレッド"
+                            description = channelCountingFlow.toList().sortedBy { it.first }.joinToString("\n") { "[__**${it.second}**件__] `#${it.first}`" }
+                        }
+                    }
+                }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
                     val messages = targetChannel.messages.withIndex()
-                    val messagesSize = messages.count()
                     val name = targetChannel.name
+                    var tempCount = 0
                     messages.onEach message@{ message ->
                         val author = message.value.author ?: return@message
                         if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        println("Counting $name: ${message.index.inc()}/${messagesSize}")
+                        println("[#$name] Found ${message.index.inc()} messages")
+                        channelCountingFlow[name] = channelCountingFlow[name]?.inc() ?: 1
+                        tempCount += 1
+                        if (tempCount % 101 == 0) refreshCountingStatus()
                     }.collect()
+                    channelCountingFlow.remove(name)
+                    refreshCountingStatus()
                 }
 
                 msg.edit {
                     content = "メッセージを集計中・・・"
-                }
-
-                channels.forEach channel@{ channel ->
-                    if (channel is ForumChannel) {
-                        channel.activeThreads.onEach { countMessages(it) }
-                    } else if (channel is TextChannel) {
-                        countMessages(channel)
+                    embed {
+                        title = "現在集計中のチャンネル/スレッド"
                     }
                 }
 
-                activeThreads.forEach thread@{
-                    countMessages(it)
-                }
-
-                privateThreads.forEach thread@{
-                    countMessages(it)
-                }
-
-                publicThreads.forEach thread@{
-                    countMessages(it)
+                channels.forEach channel@{ channel ->
+                    val job = launch {
+                        when (channel) {
+                            is ForumChannel -> channel.activeThreads.onEach { countMessages(it) }.collect()
+                            is TextChannel -> {
+                                channel.activeThreads.onEach {
+                                    launch {
+                                        countMessages(it)
+                                    }
+                                }.collect()
+                                countMessages(channel)
+                            }
+                            is VoiceChannel -> countMessages(channel)
+                        }
+                    }
+                    if (channels.last() == channel) job.wait()
                 }
 
                 msg.edit {
