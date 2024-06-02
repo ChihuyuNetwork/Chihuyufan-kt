@@ -5,5 +5,3 @@ services:
     build: .
     env_file:
       - .env
-    volumes:
-      - ~/chihuyufan-kt/data.db:/home/server/chihuyufan-kt/data.db
