@@ -29,7 +29,7 @@ dependencies {
     implementation(platform("com.aallam.openai:openai-client-bom:3.7.0"))
     implementation("io.ktor:ktor-client-okhttp-jvm:2.3.9")
     implementation("com.aallam.openai:openai-client")
-    implementation("com.mattmalec:Pterodactyl4J:2.BETA_140")
+    implementation("com.mattmalec:Pterodactyl4J:2.BETA_141")
     implementation(kotlin("stdlib"))
 }
 
