@@ -5,6 +5,7 @@ build/
 !**/src/test/**/build/
 .idea
 data.db
+.kotlin
 
 ### IntelliJ IDEA ###
 .idea/modules.xml

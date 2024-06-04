@@ -18,6 +18,7 @@ import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
+import dev.kord.core.behavior.reply
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
@@ -35,6 +36,7 @@ import dev.kord.rest.Image
 import dev.kord.rest.builder.interaction.*
 import dev.kord.rest.builder.message.actionRow
 import dev.kord.rest.builder.message.embed
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -43,7 +45,6 @@ import love.chihuyu.pterodactyl.EmbedGenerator
 import love.chihuyu.pterodactyl.OperationResponder
 import love.chihuyu.pterodactyl.OperationType
 import love.chihuyu.util.MemberUtils.checkInfraPermission
-import okhttp3.internal.wait
 
 val chatCache = mutableMapOf<ULong, MutableList<ChatMessage>>()
 
@@ -260,43 +261,36 @@ fun main() = runBlocking {
                 interaction.deferPublicResponse().respond {
                     content = "集計を開始します"
                 }
-                val msg = interaction.channel.createMessage("チャンネル/スレッドをカウント中・・・")
 
+                val msg = interaction.channel.createMessage("メッセージを集計中・・・")
                 val messageCountMap = mutableMapOf<Snowflake, Int>()
-                val channelCountingFlow = mutableMapOf<Snowflake, Pair<String, Int>>()
+                val currentCountingChannels = mutableListOf<String>()
                 val channels = interaction.guild.channels.toList()
-
-                suspend fun refreshCountingStatus() {
-                    println("Edit Request")
-                    msg.edit {
-                        content = "メッセージを集計中・・・"
-                        embed {
-                            title = "現在集計中のチャンネル/スレッド"
-                            description = channelCountingFlow.toList().sortedBy { it.second.first }.joinToString("\n") { "[__**${it.second.second}**件__] <#${it.first.value.toLong()}>" }
-                        }
-                    }
-                }
 
                 suspend fun countMessages(targetChannel: GuildMessageChannel) {
                     val messages = targetChannel.messages.withIndex()
                     val name = targetChannel.name
                     var tempCount = 0
+                    currentCountingChannels += targetChannel.mention
                     messages.onEach message@{ message ->
                         val author = message.value.author ?: return@message
-                        if (author.isBot) return@message
                         messageCountMap[author.id] = (messageCountMap[author.id] ?: 0).inc()
-                        println("[#$name] Found ${message.index.inc()} messages")
-                        channelCountingFlow[targetChannel.id] = Pair(name, channelCountingFlow[targetChannel.id]?.second?.inc() ?: 1)
                         tempCount += 1
-                        if (tempCount % 100 == 0) refreshCountingStatus()
+                        println("[#$name] Found $tempCount messages")
                     }.collect()
-                    channelCountingFlow.remove(targetChannel.id)
-                    refreshCountingStatus()
+                    interaction.channel.createMessage("【集計完了】${targetChannel.mention} / ${tempCount}msgs")
+                    currentCountingChannels -= targetChannel.mention
+
+                    msg.edit {
+                        content = "メッセージを集計中・・・"
+                        if (currentCountingChannels.isNotEmpty()) embed {
+                            title = "現在集計中のチャンネル/スレッド"
+                            description = currentCountingChannels.joinToString("\n")
+                        }
+                    }
                 }
 
-                msg.edit {
-                    content = "メッセージを集計中・・・"
-                }
+                val jobs = mutableListOf<Job>()
 
                 channels.forEach channel@{ channel ->
                     val job = launch {
@@ -313,22 +307,30 @@ fun main() = runBlocking {
                             is VoiceChannel -> countMessages(channel)
                         }
                     }
-                    if (channels.last() == channel) job.wait()
-                }
-
-                msg.edit {
-                    content = """
-                        メッセージランキング
-                        
-                        """.trimIndent()
-                }
-
-                val chunked = messageCountMap.toList().sortedByDescending { it.second }
-                var oldContent = msg.content
-                chunked.forEach {
-                    msg.edit {
-                        content = oldContent + "\n**${chunked.indexOf(it).inc()}.** `${interaction.guild.getMemberOrNull(it.first)?.effectiveName ?: "Deleted User"}` / ${it.second}msg"
-                        oldContent = content ?: ""
+                    jobs += job
+                    job.invokeOnCompletion {
+                        jobs -= job
+                        if (jobs.isNotEmpty()) return@invokeOnCompletion
+                        launch {
+                            val chunked = messageCountMap.toList().sortedByDescending { it.second }.chunked(50)
+                            val mainContent = mutableListOf<String>()
+                            chunked.forEach { chunk ->
+                                chunk.forEach {
+                                    mainContent += "\n**${chunk.indexOf(it).inc()}.** ${interaction.guild.getMemberOrNull(it.first)?.mention ?: "Deleted User"} / ${it.second}msg"
+                                }
+                            }
+                            msg.edit {
+                                content = "集計が完了しました"
+                            }
+                            msg.reply {
+                                mainContent.forEachIndexed { index, s ->
+                                    embed {
+                                        title = "**メッセージランキング ~${50 * index.inc()}位**"
+                                        description = s
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
