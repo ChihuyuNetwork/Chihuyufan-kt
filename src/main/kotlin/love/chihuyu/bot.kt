@@ -8,22 +8,15 @@ import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
-import dev.kord.cache.api.DataCache
-import dev.kord.cache.api.DataEntryCache
-import dev.kord.cache.map.MapLikeCollection
-import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
-import dev.kord.common.entity.Choice
 import dev.kord.common.entity.Snowflake
-import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.reply
-import dev.kord.core.cache.lruCache
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
@@ -61,17 +54,17 @@ fun main() = runBlocking {
     val openai = OpenAI(System.getenv("OPENAI_TOKEN"))
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
-        cache {
-            defaultGenerator = lruCache(2147483647)
-            users { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            members { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            roles { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            guilds { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            channels { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            voiceState { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            emojis { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-            stickers { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
-        }
+//        cache {
+//            defaultGenerator = lruCache(2147483647)
+//            users { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            members { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            roles { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            guilds { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            channels { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            voiceState { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            emojis { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//            stickers { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
+//        }
     }
 
     kord.createGlobalApplicationCommands {
@@ -168,10 +161,8 @@ fun main() = runBlocking {
         input("unplayed", "#やりたいやつ からゲームを探します") {
             string("type", "探すゲーム") {
                 required = true
-                choices = mutableListOf(
-                    Choice.StringChoice("Steam", Optional.invoke(), "Steamストアのゲーム"),
-                    Choice.StringChoice("配布マップ", Optional.invoke(), "マイクラの配布マップ")
-                )
+                choice("Steam", "Steamストアのゲーム")
+                choice("配布マップ", "マイクラの配布マップ")
             }
         }
         input("purge", "")
