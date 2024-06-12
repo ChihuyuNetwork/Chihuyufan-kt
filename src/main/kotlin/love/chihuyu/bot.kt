@@ -8,17 +8,22 @@ import com.aallam.openai.api.model.ModelId
 import com.aallam.openai.client.OpenAI
 import com.mattmalec.pterodactyl4j.PteroBuilder
 import com.mattmalec.pterodactyl4j.UtilizationState
+import dev.kord.cache.api.DataCache
+import dev.kord.cache.api.DataEntryCache
 import dev.kord.cache.map.MapLikeCollection
 import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
+import dev.kord.common.entity.Choice
 import dev.kord.common.entity.Snowflake
+import dev.kord.common.entity.optional.Optional
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
 import dev.kord.core.behavior.interaction.respondEphemeral
 import dev.kord.core.behavior.interaction.response.edit
 import dev.kord.core.behavior.interaction.response.respond
 import dev.kord.core.behavior.reply
+import dev.kord.core.cache.lruCache
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.User
 import dev.kord.core.entity.channel.ForumChannel
@@ -57,6 +62,7 @@ fun main() = runBlocking {
     val kord = Kord(System.getenv("CHIHUYUFANKT_TOKEN")) {
         // キャッシュしておくことでAPIを叩くことなくデータを取得できる
         cache {
+            defaultGenerator = lruCache(2147483647)
             users { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
             members { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
             roles { cache, description -> MapEntryCache(cache, description, MapLikeCollection.concurrentHashMap()) }
@@ -159,6 +165,16 @@ fun main() = runBlocking {
         input("emoji-image", "絵文字の画像リンクを取得します") {
             string("emoji", "絵文字") { required = true }
         }
+        input("unplayed", "#やりたいやつ からゲームを探します") {
+            string("type", "探すゲーム") {
+                required = true
+                choices = mutableListOf(
+                    Choice.StringChoice("Steam", Optional.invoke(), "Steamストアのゲーム"),
+                    Choice.StringChoice("配布マップ", Optional.invoke(), "マイクラの配布マップ")
+                )
+            }
+        }
+        input("purge", "")
     }
 
     kord.on<MessageCreateEvent> {
@@ -256,6 +272,85 @@ fun main() = runBlocking {
                     }
                 }
             }
+            "youtube-thumbnail" -> {
+                interaction.deferPublicResponse().respond {
+                    val target = interaction.command.strings["target"]!!
+                    listOf("default", "hqdefault", "mqdefault", "sddefault", "maxresdefault")
+                        .forEach {
+                            embed {
+                                title = it
+                                image = "https://img.youtube.com/vi_webp/${
+                                    if ("https://" in target) {
+                                        if ("youtu.be" in target) {
+                                            target.substringAfter("be/").substringBefore('&')
+                                        } else if ("v=" in target) {
+                                            target.substringAfter("v=").substringBefore('&')
+                                        } else if ("shorts" in target) {
+                                            target.substringAfter("shorts/").substringBefore('&')
+                                        } else {
+                                            target
+                                        }
+                                    } else {
+                                        target
+                                    }
+                                }/$it.webp"
+                            }
+                        }
+                }
+            }
+            "random-vc" -> {
+                interaction.deferPublicResponse().respond {
+                    val vc = interaction.user.getVoiceState().getChannelOrNull() as? VoiceChannel
+                    if (vc == null) {
+                        content = "VCに参加してから実行してください"
+                        return@respond
+                    }
+                    val vcMembers = vc.fetchChannel().voiceStates.toList()
+                    val member = vcMembers.filterNot { it.getMember().isBot }.random()
+                    content = member.getMember().mention
+                }
+            }
+            "emoji-image" -> {
+                interaction.deferPublicResponse().respond {
+                    val emoji = interaction.guild.emojis.firstOrNull { it.name == command.strings["emoji"] }
+                    if (emoji == null) {
+                        content = "絵文字が見つかりませんでした"
+                        return@respond
+                    }
+                    embed {
+                        title = emoji.name
+                        image = emoji.image.cdnUrl.toUrl {
+                            size = Image.Size.Size4096
+                            format = if (emoji.isAnimated) Image.Format.GIF else Image.Format.PNG
+                        }
+                        timestamp = Clock.System.now()
+                    }
+                }
+            }
+            "unplayed" -> {
+                val channel = interaction.guild.getChannel(Snowflake(1134479379267866624)) as TextChannel
+                    when (interaction.command.strings.values.toList()[0]) {
+                    "Steam" -> {
+                        interaction.deferPublicResponse().respond {
+                            content = channel.messages.catch {
+                                "https://store.steampowered.com" in content!!
+                            }.toList().joinToString("\n")
+                        }
+                    }
+                    "配布マップ" -> {
+                        interaction.deferPublicResponse().respond {
+                            content = channel.messages.catch {
+                                "https://minecraft-mcworld.com" in content!! || "http://gerogero2.sakura.ne.jp/" in content!!
+                            }.toList().joinToString("\n")
+                        }
+                    }
+                    else -> {
+                        interaction.deferPublicResponse().respond {
+                            content = "その形式は対応していません"
+                        }
+                    }
+                }
+            }
             "message-ranking" -> {
                 //15分でインタラクションのメッセージは期限が切れてエラー起きるのでここで完結させておく
                 interaction.deferPublicResponse().respond {
@@ -312,21 +407,20 @@ fun main() = runBlocking {
                         jobs -= job
                         if (jobs.isNotEmpty()) return@invokeOnCompletion
                         launch {
-                            val chunked = messageCountMap.toList().sortedByDescending { it.second }.chunked(50)
-                            val mainContent = mutableListOf<String>()
+                            val chunked = messageCountMap.toList().sortedByDescending { it.second }.chunked(30)
+                            val mainContent = mutableListOf<List<String>>()
                             chunked.forEach { chunk ->
-                                chunk.forEach {
-                                    mainContent += "\n**${chunk.indexOf(it).inc()}.** ${interaction.guild.getMemberOrNull(it.first)?.mention ?: "Deleted User"} / ${it.second}msg"
-                                }
+                                mainContent += chunk.map { "**${chunk.indexOf(it).inc() + (chunked.indexOf(chunk) * 30)}.** <@${interaction.guild.getMemberOrNull(it.first)?.id?.value}> / ${it.second}msg" }
                             }
                             msg.edit {
-                                content = "集計が完了しました"
+                                content = "全チャンネルの集計が完了しました"
                             }
-                            msg.reply {
-                                mainContent.forEachIndexed { index, s ->
+                            mainContent.forEachIndexed { index, s ->
+                                msg.reply {
+                                    content = "集計結果"
                                     embed {
-                                        title = "**メッセージランキング ~${50 * index.inc()}位**"
-                                        description = s
+                                        title = "**～${30 * index.inc()}位**"
+                                        description = s.joinToString("\n")
                                     }
                                 }
                             }
@@ -495,61 +589,6 @@ fun main() = runBlocking {
                         interaction.deferEphemeralResponse().respond {
                             content = "使用可能なモデルの一覧はこちらです\n```${openai.models().joinToString("\n") { it.id.id }}```"
                         }
-                    }
-                }
-            }
-            "youtube-thumbnail" -> {
-                interaction.deferPublicResponse().respond {
-                    val target = interaction.command.strings["target"]!!
-                    listOf("default", "hqdefault", "mqdefault", "sddefault", "maxresdefault")
-                        .forEach {
-                        embed {
-                            title = it
-                            image = "https://img.youtube.com/vi_webp/${
-                                if ("https://" in target) {
-                                    if ("youtu.be" in target) {
-                                        target.substringAfter("be/").substringBefore('&')
-                                    } else if ("v=" in target) {
-                                        target.substringAfter("v=").substringBefore('&')
-                                    } else if ("shorts" in target) {
-                                        target.substringAfter("shorts/").substringBefore('&')
-                                    } else {
-                                        target
-                                    }
-                                } else {
-                                    target
-                                }
-                            }/$it.webp"
-                        }
-                    }
-                }
-            }
-            "random-vc" -> {
-                interaction.deferPublicResponse().respond {
-                    val vc = interaction.user.getVoiceState().getChannelOrNull() as? VoiceChannel
-                    if (vc == null) {
-                        content = "VCに参加してから実行してください"
-                        return@respond
-                    }
-                    val vcMembers = vc.fetchChannel().voiceStates.toList()
-                    val member = vcMembers.filterNot { it.getMember().isBot }.random()
-                    content = member.getMember().mention
-                }
-            }
-            "emoji-image" -> {
-                interaction.deferPublicResponse().respond {
-                    val emoji = interaction.guild.emojis.firstOrNull { it.name == command.strings["emoji"] }
-                    if (emoji == null) {
-                        content = "絵文字が見つかりませんでした"
-                        return@respond
-                    }
-                    embed {
-                        title = emoji.name
-                        image = emoji.image.cdnUrl.toUrl {
-                            size = Image.Size.Size4096
-                            format = if (emoji.isAnimated) Image.Format.GIF else Image.Format.PNG
-                        }
-                        timestamp = Clock.System.now()
                     }
                 }
             }
