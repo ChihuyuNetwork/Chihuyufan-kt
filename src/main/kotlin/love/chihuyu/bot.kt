@@ -14,7 +14,6 @@ import dev.kord.cache.map.lruLinkedHashMap
 import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
 import dev.kord.common.entity.Permission
-import dev.kord.common.entity.Permissions
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
@@ -172,9 +171,7 @@ fun main() = runBlocking {
                 choice("配布マップ", "マイクラの配布マップ")
             }
         }
-        input("purge", "チャンネルのメッセージを全て消します") {
-            defaultMemberPermissions = Permissions(Permission.ManageMessages)
-        }
+        input("purge", "チャンネルのメッセージを全て消します")
     }
 
     kord.on<MessageCreateEvent> {
@@ -196,6 +193,15 @@ fun main() = runBlocking {
         val command = interaction.command
 
         when (command.rootName) {
+            "purge" -> {
+                interaction.deferPublicResponse().respond {
+                    if (Permission.ManageMessages !in interaction.permissions.values) content = "権限がありません"
+                    interaction.channel.messages.onEach {
+                        it.delete()
+                    }
+                    content = "メッセージを全て消しました"
+                }
+            }
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
