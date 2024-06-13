@@ -23,10 +23,7 @@ import dev.kord.core.behavior.reply
 import dev.kord.core.cache.lruCache
 import dev.kord.core.entity.ReactionEmoji
 import dev.kord.core.entity.User
-import dev.kord.core.entity.channel.ForumChannel
-import dev.kord.core.entity.channel.GuildMessageChannel
-import dev.kord.core.entity.channel.TextChannel
-import dev.kord.core.entity.channel.VoiceChannel
+import dev.kord.core.entity.channel.*
 import dev.kord.core.event.interaction.GuildButtonInteractionCreateEvent
 import dev.kord.core.event.interaction.GuildChatInputCommandInteractionCreateEvent
 import dev.kord.core.event.message.MessageCreateEvent
@@ -354,7 +351,6 @@ fun main() = runBlocking {
                 channels.forEach channel@{ channel ->
                     val job = launch {
                         when (channel) {
-                            is ForumChannel -> channel.activeThreads.onEach { countMessages(it) }.collect()
                             is TextChannel -> {
                                 channel.activeThreads.onEach {
                                     launch {
@@ -363,7 +359,20 @@ fun main() = runBlocking {
                                 }.collect()
                                 countMessages(channel)
                             }
+                            is NewsChannel -> {
+                                channel.activeThreads.onEach {
+                                    launch {
+                                        countMessages(it)
+                                    }
+                                }.collect()
+                                countMessages(channel)
+                            }
+                            is ThreadParentChannel -> {
+                                channel.activeThreads.onEach { countMessages(it) }.collect()
+                                channel.getPublicArchivedThreads().onEach { countMessages(it) }.collect()
+                            }
                             is VoiceChannel -> countMessages(channel)
+                            is StageChannel -> countMessages(channel)
                         }
                     }
                     jobs += job
