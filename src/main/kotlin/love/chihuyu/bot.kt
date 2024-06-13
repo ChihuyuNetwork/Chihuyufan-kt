@@ -13,7 +13,6 @@ import dev.kord.cache.map.internal.MapEntryCache
 import dev.kord.cache.map.lruLinkedHashMap
 import dev.kord.common.Color
 import dev.kord.common.entity.ButtonStyle
-import dev.kord.common.entity.Permission
 import dev.kord.common.entity.Snowflake
 import dev.kord.core.Kord
 import dev.kord.core.behavior.edit
@@ -164,14 +163,6 @@ fun main() = runBlocking {
         input("emoji-image", "絵文字の画像リンクを取得します") {
             string("emoji", "絵文字") { required = true }
         }
-        input("unplayed", "#やりたいやつ からゲームを探します") {
-            string("type", "探すゲーム") {
-                required = true
-                choice("Steam", "Steamストアのゲーム")
-                choice("配布マップ", "マイクラの配布マップ")
-            }
-        }
-        input("purge", "チャンネルのメッセージを全て消します")
     }
 
     kord.on<MessageCreateEvent> {
@@ -193,15 +184,6 @@ fun main() = runBlocking {
         val command = interaction.command
 
         when (command.rootName) {
-            "purge" -> {
-                interaction.deferPublicResponse().respond {
-                    if (Permission.ManageMessages !in interaction.permissions.values) content = "権限がありません"
-                    interaction.channel.messages.onEach {
-                        it.delete()
-                    }
-                    content = "メッセージを全て消しました"
-                }
-            }
             "ping" -> {
                 interaction.deferPublicResponse().respond {
                     content = "Avg. " + kord.gateway.averagePing?.toString()
@@ -269,7 +251,7 @@ fun main() = runBlocking {
                         description = defenders.joinToString("\n") { it.mention }
                     }
 
-                    val maps = listOf("サンセット", "ロータス", "パール", "フラクチャー", "ブリーズ", "アイスボックス", "バインド", "ヘイブン", "スプリット", "アセント")
+                    val maps = listOf("サンセット", "ロータス", "パール", "フラクチャー", "ブリーズ", "アイスボックス", "バインド", "ヘイブン", "スプリット", "アセント", "アビス")
 
                     embed {
                         title = "マップ"
@@ -330,26 +312,6 @@ fun main() = runBlocking {
                             format = if (emoji.isAnimated) Image.Format.GIF else Image.Format.PNG
                         }
                         timestamp = Clock.System.now()
-                    }
-                }
-            }
-            "unplayed" -> {
-                val channel = interaction.guild.getChannel(Snowflake(1134479379267866624)) as TextChannel
-                interaction.deferPublicResponse().respond {
-                    content = when {
-                        "Steam" in command.strings["type"]!! -> {
-                            channel.messages.catch {
-                                "https://store.steampowered.com" in content!!
-                            }.toList().joinToString("\n")
-                        }
-                        "配布マップ" in command.strings["type"]!! -> {
-                            channel.messages.catch {
-                                "https://minecraft-mcworld.com" in content!! || "http://gerogero2.sakura.ne.jp/" in content!!
-                            }.toList().joinToString("\n")
-                        }
-                        else -> {
-                            "その形式は対応していません"
-                        }
                     }
                 }
             }
