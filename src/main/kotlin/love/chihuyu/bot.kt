@@ -529,7 +529,7 @@ fun main() = runBlocking {
                     var tempCount = 0
 
                     completion.collect { chunk ->
-                        tempContent += chunk.choices[0].delta.content ?: return@collect
+                        tempContent += chunk.choices[0].delta!!.content ?: return@collect
                         if (tempContent.isNotEmpty() && tempCount % 16 == 0) {
                             msg.edit {
                                 content = tempContent
