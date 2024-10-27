@@ -96,33 +96,6 @@ fun main() =
                 }
                 subCommand("backups", "バックアップ一覧を表示します")
             }
-            input("gpt", "ChatGPTに関する操作を行います") {
-                subCommand("chat", "新しいセッションを開始します") {
-                    string("text", "メッセージ") { required = true }
-                    string("model", "モデル")
-                    number("temperature", "文章の自由度") {
-                        minValue = .0
-                        maxValue = 2.0
-                    }
-                    integer("max_tokens", "文章の最大の長さ") {
-                        minValue = 100
-                        maxValue = 4000
-                    }
-                }
-                subCommand("reply", "現在のセッションを続けます") {
-                    string("text", "メッセージ") { required = true }
-                    string("model", "モデル")
-                    number("temperature", "文章の自由度") {
-                        minValue = .0
-                        maxValue = 2.0
-                    }
-                    integer("max_tokens", "文章の最大の長さ") {
-                        minValue = 100
-                        maxValue = 4000
-                    }
-                }
-                subCommand("models", "使えるモデル一覧を表示します")
-            }
             input("youtube-thumbnail", "Youtubeの動画のサムネイルを取得します") {
                 string("target", "URL") { required = true }
             }
