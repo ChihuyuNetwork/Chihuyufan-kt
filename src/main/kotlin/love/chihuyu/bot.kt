@@ -342,8 +342,7 @@ fun main() =
                     val jobs = mutableListOf<Job>()
 
                     channels.forEach channel@{ channel ->
-                        val job =
-                            launch {
+                        val job = launch {
                                 when (channel) {
                                     is TextChannel, is NewsChannel -> {
                                         countMessages(channel)
@@ -368,10 +367,9 @@ fun main() =
                                 val chunked = messageCountMap.toList().sortedByDescending { it.second }.chunked(30)
                                 val mainContent = mutableListOf<List<String>>()
                                 chunked.forEach { chunk ->
-                                    mainContent +=
-                                        chunk.map {
-                                            "**${chunk.indexOf(it).inc() + (chunked.indexOf(chunk) * 30)}.** <@${interaction.guild.getMemberOrNull(it.first)?.id?.value}> / ${it.second}msg"
-                                        }
+                                    mainContent += chunk.map {
+                                        "**${chunk.indexOf(it).inc() + (chunked.indexOf(chunk) * 30)}.** <@${interaction.guild.getMemberOrNull(it.first)?.id?.value}> / ${it.second}msg"
+                                    }
                                 }
                                 mainContent.forEachIndexed { index, s ->
                                     msg.reply {
