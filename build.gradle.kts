@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     kotlin("jvm") version "2.0.20"
     id("com.github.johnrengelman.shadow") version "8.1.1"
@@ -20,15 +18,12 @@ dependencies {
     implementation("org.apache.logging.log4j:log4j-api:2.23.1")
     implementation("org.apache.logging.log4j:log4j-core:2.23.1")
     implementation("org.apache.logging.log4j:log4j-slf4j-impl:2.23.1")
-    implementation("dev.kord:kord-common:0.14.0")
-    implementation("dev.kord:kord-core:0.14.0")
-    implementation("dev.kord:kord-core-voice:0.14.0")
-    implementation("dev.kord:kord-rest:0.14.0")
-    implementation("dev.kord:kord-voice:0.14.0")
-    implementation("dev.kord:kord-gateway:0.14.0")
-    implementation(platform("com.aallam.openai:openai-client-bom:3.8.2"))
-    implementation("io.ktor:ktor-client-okhttp-jvm:2.3.12")
-    implementation("com.aallam.openai:openai-client")
+    implementation("dev.kord:kord-common:0.15.0")
+    implementation("dev.kord:kord-core:0.15.0")
+    implementation("dev.kord:kord-core-voice:0.15.0")
+    implementation("dev.kord:kord-rest:0.15.0")
+    implementation("dev.kord:kord-voice:0.15.0")
+    implementation("dev.kord:kord-gateway:0.15.0")
     implementation("com.mattmalec:Pterodactyl4J:2.BETA_142")
     implementation(kotlin("stdlib"))
 }
@@ -50,14 +45,4 @@ tasks {
 
 kotlin {
     jvmToolchain(21)
-}
-
-val compileKotlin: KotlinCompile by tasks
-compileKotlin.kotlinOptions {
-    jvmTarget = "21"
-}
-
-val compileTestKotlin: KotlinCompile by tasks
-compileTestKotlin.kotlinOptions {
-    jvmTarget = "21"
 }
