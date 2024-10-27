@@ -4,8 +4,11 @@ import com.mattmalec.pterodactyl4j.client.entities.PteroClient
 import dev.kord.core.entity.interaction.InteractionCommand
 
 object OperationResponder {
-
-    fun getButtonRespond(pteroClient: PteroClient, id: String, operationType: OperationType): String {
+    fun getButtonRespond(
+        pteroClient: PteroClient,
+        id: String,
+        operationType: OperationType,
+    ): String {
         val servers = pteroClient.retrieveServersByName(id.split("-")[1], false).execute()
         return if (servers.size == 0) {
             "`${id[1]}` was not found."
@@ -34,13 +37,17 @@ object OperationResponder {
                 }
             } catch (e: Throwable) {
                 "Error encountered!\n```${
-                e.message + "\n" + e.stackTrace.joinToString("\n")
+                    e.message + "\n" + e.stackTrace.joinToString("\n")
                 }```"
             }
         }
     }
 
-    fun getInputRespond(command: InteractionCommand, pteroClient: PteroClient, operationType: OperationType): String {
+    fun getInputRespond(
+        command: InteractionCommand,
+        pteroClient: PteroClient,
+        operationType: OperationType,
+    ): String {
         val name = command.strings["name"]
         val commandToSend = command.strings["command"]
         val servers = pteroClient.retrieveServersByName(name, false).execute()
@@ -72,7 +79,7 @@ object OperationResponder {
                 }
             } catch (e: Throwable) {
                 "Error encountered!\n```${
-                e.message + "\n" + e.stackTrace.joinToString("\n")
+                    e.message + "\n" + e.stackTrace.joinToString("\n")
                 }```"
             }
         }

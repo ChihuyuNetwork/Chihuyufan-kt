@@ -5,5 +5,5 @@ enum class OperationType {
     UP,
     DOWN,
     RESTART,
-    KILL
+    KILL,
 }
